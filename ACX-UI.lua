@@ -1,3 +1,4 @@
+
 --[[
   Orion‑like UI Library — v2 (Luau, single‑file)
   Author: ChatGPT (for Rey)
@@ -19,6 +20,11 @@
       Name = "Acinonyx • Orion‑like v2",
       IntroText = "Welcome, Rey!",
       MinimizeKeybind = Enum.KeyCode.RightControl, -- optional, default RightControl
+
+      -- Acrylic options (new)
+      Acrylic = true,
+      AcrylicTransparency = 0.25, -- 0..1 (0=solid, 1=invisible). 0.25 recommended.
+      AcrylicBlur = 12,          -- Lighting.BlurEffect.Size
   })
 
   local Tab = Window:MakeTab({ Name = "Main" })
@@ -69,6 +75,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting") -- (NEW) for acrylic blur
 local LocalPlayer = Players.LocalPlayer
 
 -- ===== Util =====
@@ -149,7 +156,6 @@ local function buttonHover(btnLikeFrame)
     btnLikeFrame.MouseLeave:Connect(function() tween(btnLikeFrame, 0.08, {BackgroundColor3 = Orion._theme.Bg2}) end)
 end
 
--- ===== Root Screen =====
 local function dropShadow(parent, radius)
     local shadow = Instance.new("ImageLabel")
     shadow.Name = "_Shadow"
@@ -157,7 +163,7 @@ local function dropShadow(parent, radius)
     shadow.Image = Orion._theme.ShadowImageId
     shadow.ScaleType = Enum.ScaleType.Slice
     shadow.SliceCenter = Rect.new(10,10,118,118)
-    shadow.ImageColor3 = Orion._theme.Navy -- berikan tint biru dongker
+    shadow.ImageColor3 = Orion._theme.Navy -- tint biru dongker
     shadow.ImageTransparency = 0.7
     shadow.Size = UDim2.new(1, 24, 1, 24)
     shadow.Position = UDim2.new(0, -12, 0, -12)
@@ -177,17 +183,45 @@ Screen.ResetOnSpawn = false
 Screen.ZIndexBehavior = Enum.ZIndexBehavior.Global
 Screen.Parent = (RunService:IsStudio() and LocalPlayer:FindFirstChildOfClass("PlayerGui")) or LocalPlayer.PlayerGui
 
--- Notifications layer
+-- ===== Acrylic (global blur) helper =====
+local function getOrCreateBlur()
+    local b = Lighting:FindFirstChild("ACX_UI_Blur")
+    if not b then
+        b = Instance.new("BlurEffect")
+        b.Name = "ACX_UI_Blur"
+        b.Enabled = false
+        b.Size = 0
+        b.Parent = Lighting
+    end
+    return b
+end
+
+function Orion:_updateAcrylic()
+    local anyVisible = false
+    for _,w in ipairs(self._windows or {}) do
+        if w._root and w._root.Parent and w._root.Visible then
+            anyVisible = true; break
+        end
+    end
+    local blur = getOrCreateBlur()
+    blur.Enabled = anyVisible
+end
+
+-- ===== Notifications layer (bottom-right) =====
 local NotifyLayer = Instance.new("Frame")
 NotifyLayer.BackgroundTransparency = 1
 NotifyLayer.Size = UDim2.new(1, -20, 1, -20)
-NotifyLayer.Position = UDim2.new(0, 10, 0, 10)
+NotifyLayer.AnchorPoint = Vector2.new(1, 1)
+NotifyLayer.Position = UDim2.new(1, -10, 1, -10)
 NotifyLayer.Parent = Screen
 
 local NotifyList = Instance.new("UIListLayout")
 NotifyList.Parent = NotifyLayer
 NotifyList.SortOrder = Enum.SortOrder.LayoutOrder
 NotifyList.Padding = UDim.new(0, 6)
+NotifyList.FillDirection = Enum.FillDirection.Vertical
+NotifyList.HorizontalAlignment = Enum.HorizontalAlignment.Right
+NotifyList.VerticalAlignment = Enum.VerticalAlignment.Bottom
 
 function Orion:MakeNotification(opts)
     opts = opts or {}
@@ -265,7 +299,6 @@ function Orion:LoadConfig()
     if ok and typeof(data)=="table" then
         self.Config._data = data
         self:MakeNotification({Name="Load", Content="Config loaded.", Time=2})
-        -- user can re-apply their values manually using returned element setters
         return true
     else
         self:MakeNotification({Name="Load", Content="Failed to decode config.", Time=2}); return false
@@ -275,7 +308,6 @@ end
 -- ===== Theme API =====
 function Orion:SetTheme(patch)
     for k,v in pairs(patch or {}) do if self._theme[k] ~= nil then self._theme[k] = v end end
-    -- windows may call :ApplyTheme() to repaint static colors
 end
 
 -- ===== Window API =====
@@ -293,12 +325,16 @@ local function makeItemBase(parent, height)
     return Item
 end
 
--- create root/overlay per window
 function Orion:MakeWindow(opts)
     opts = opts or {}
     local windowTitle = tostring(opts.Name or "Orion‑like Window")
     local introText = opts.IntroText
     local minimizeKey = opts.MinimizeKeybind or Enum.KeyCode.RightControl
+
+    -- Acrylic options
+    local acrylicOn        = (opts.Acrylic ~= false)
+    local acrylicAlpha     = tonumber(opts.AcrylicTransparency or 0.25)  -- 0..1
+    local acrylicBlurSize  = tonumber(opts.AcrylicBlur or 12)
 
     if introText then
         Orion:MakeNotification({ Name = windowTitle, Content = introText, Time = 2.5 })
@@ -365,15 +401,28 @@ function Orion:MakeWindow(opts)
     RightPane.Parent = Body
     roundify(RightPane); stroke(RightPane); padding(RightPane, 10);
 
+    -- Apply acrylic transparency (glass-look)
+    if acrylicOn then
+        Root.BackgroundTransparency     = acrylicAlpha
+        Header.BackgroundTransparency   = acrylicAlpha
+        LeftPane.BackgroundTransparency = acrylicAlpha
+        RightPane.BackgroundTransparency= acrylicAlpha
+        local blur = getOrCreateBlur()
+        blur.Size = acrylicBlurSize
+        blur.Enabled = true
+        Orion:_updateAcrylic()
+    end
+
     local Pages = Instance.new("Folder")
     Pages.Name = "Pages"; Pages.Parent = RightPane
 
-    -- Floating Overlay (when minimized)
+    -- Floating Overlay (when minimized) — left center
     local Overlay = Instance.new("Frame")
     Overlay.Visible = false
     Overlay.BackgroundColor3 = Orion._theme.Bg2
     Overlay.Size = UDim2.new(0, 220, 0, 44)
-    Overlay.Position = UDim2.new(0, 20, 0, 20)
+    Overlay.AnchorPoint = Vector2.new(0, 0.5)
+    Overlay.Position = UDim2.new(0, 20, 0.5, 0)
     Overlay.Parent = Screen
     roundify(Overlay); stroke(Overlay); padding(Overlay, 8); dropShadow(Overlay, Orion._theme.Round)
 
@@ -395,9 +444,13 @@ function Orion:MakeWindow(opts)
         minimized = state
         Root.Visible = not state
         Overlay.Visible = state
+        Orion:_updateAcrylic()
     end
 
-    BtnClose.MouseButton1Click:Connect(function() Root:Destroy(); Overlay:Destroy() end)
+    BtnClose.MouseButton1Click:Connect(function()
+        Root:Destroy(); Overlay:Destroy()
+        Orion:_updateAcrylic()
+    end)
     BtnMin.MouseButton1Click:Connect(function() setMinimized(true) end)
     BtnRestore.MouseButton1Click:Connect(function() setMinimized(false) end)
 
@@ -417,7 +470,7 @@ function Orion:MakeWindow(opts)
         SetMinimized = function(self2, v) setMinimized(not not v) end,
         SetMinimizeKeybind = function(self2, key) self2._minKey = key end,
         ApplyTheme = function(self2)
-            -- simple repaint for static nodes
+            -- repaint for static nodes
             Root.BackgroundColor3 = Orion._theme.Bg
             Header.BackgroundColor3 = Orion._theme.Bg2
             LeftPane.BackgroundColor3 = Orion._theme.Bg2
@@ -504,7 +557,6 @@ function TabMT:AddSection(opts)
     List.SortOrder = Enum.SortOrder.LayoutOrder
     List.Padding = UDim.new(0, 8)
 
-    -- garis pembatas di bawah judul section
     local Sep = Instance.new("Frame")
     Sep.BackgroundColor3 = Orion._theme.Stroke
     Sep.BorderSizePixel = 0
