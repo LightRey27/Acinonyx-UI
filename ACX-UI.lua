@@ -1,33 +1,21 @@
 
 --[[
-  ACX-UI • Orion-like Library (Final merged)
+  ACX-UI • Orion-like Library (Full) — v2.3.0
+  ✅ Keeps ALL features from previous "final_merged"
+  ➕ Fix: ProfileCard anchored at bottom independently (LeftList container for tabs)
   Features:
     • Acrylic (transparent + blur) with options
     • Window centered on screen
     • Notifications stacked bottom-right
     • Minimize system + draggable overlay (left-center)
-    • Profile Card docked at bottom of tab list
+    • Profile Card docked at bottom of tab list (not affected by UIListLayout)
     • Thin shadow outline (50%) + thin border stroke
     • Tabs, Sections, Elements: Label, Paragraph, Button, Toggle, Slider, Dropdown, MultiDropdown, Textbox, Keybind
     • Lightweight Config Save/Load + Theme patch + ApplyTheme()
-
-  Usage:
-    local Orion = loadstring(game:HttpGet("https://raw.githubusercontent.com/LightRey27/Acnx-UI/main/ACX-UI.lua"))()
-    Orion:BindConfig({ Folder = "AcnxUI", File = "tester.json" })
-    local win = Orion:MakeWindow({
-      Name = "ACX-UI",
-      IntroText = "Ready",
-      Acrylic = true,
-      AcrylicTransparency = 0.25,
-      AcrylicBlur = 12,
-      Center = true,           -- center window (default true)
-      ShowProfileCard = true,  -- show profile card (default true)
-      MinimizeKeybind = Enum.KeyCode.RightControl,
-    })
 ]]
 
 local Orion = {}
-Orion._version = "2.2.0"
+Orion._version = "2.3.0"
 Orion._instances, Orion._signals, Orion._windows = {}, {}, {}
 
 -- ===== Theme =====
@@ -37,7 +25,7 @@ Orion._theme = {
     TextSize  = 14,
     Round     = 10,
     Padding   = 8,
-    -- Palette (navy / biru dongker)
+    -- Palette
     Navy     = Color3.fromRGB(12, 36, 78),
     NavySoft = Color3.fromRGB(18, 48, 96),
     Bg       = Color3.fromRGB(16, 17, 20),
@@ -311,6 +299,7 @@ function Orion:MakeWindow(opts)
     local acrylicBlurSz = tonumber(opts.AcrylicBlur or 12)
     local centerOnScreen= (opts.Center ~= false)       -- default true
     local showProfile   = (opts.ShowProfileCard ~= false) -- default true
+    local profilePos    = tostring(opts.ProfileCardPosition or "bottom") -- "bottom"|"center"|"top"
 
     if introText then
         Orion:MakeNotification({ Name = windowTitle, Content = introText, Time = 2.5 })
@@ -370,17 +359,18 @@ function Orion:MakeWindow(opts)
     LeftPane.Parent = Body
     roundify(LeftPane); stroke(LeftPane); padding(LeftPane, 8)
 
+    -- NEW: dedicated container for tab buttons so ProfileCard is independent
+    local LeftList = Instance.new("Frame")
+    LeftList.Name = "LeftList"
+    LeftList.BackgroundTransparency = 1
+    LeftList.Size = UDim2.new(1, 0, 1, -88) -- 72 profile + ~16 margin
+    LeftList.Position = UDim2.new(0, 0, 0, 0)
+    LeftList.Parent = LeftPane
+
     local TabList = Instance.new("UIListLayout")
-    TabList.Parent = LeftPane
+    TabList.Parent = LeftList
     TabList.SortOrder = Enum.SortOrder.LayoutOrder
     TabList.Padding = UDim.new(0, 6)
-
-    -- Reserve bottom space for Profile Card
-    local Spacer = Instance.new("Frame")
-    Spacer.BackgroundTransparency = 1
-    Spacer.Size = UDim2.new(1, 0, 0, 80)
-    Spacer.Name = "_BottomSpacer"
-    Spacer.Parent = LeftPane
 
     local RightPane = Instance.new("Frame")
     RightPane.BackgroundColor3 = Orion._theme.Bg2
@@ -414,54 +404,45 @@ function Orion:MakeWindow(opts)
     Overlay.Parent = Screen
     roundify(Overlay); stroke(Overlay); padding(Overlay, 8); dropShadow(Overlay, Orion._theme.Round)
 
-    local OvTitle = createText(Overlay, windowTitle, Orion._theme.TextSize, true)
-    OvTitle.Size = UDim2.new(1, -90, 1, 0)
-
+    local OvTitle = createText(Overlay, windowTitle, Orion._theme.TextSize, true); OvTitle.Size = UDim2.new(1, -90, 1, 0)
     local BtnRestore = Instance.new("TextButton")
     BtnRestore.Text = "Restore"
     BtnRestore.Font = Orion._theme.Font
     BtnRestore.TextColor3 = Orion._theme.Text
     BtnRestore.TextSize = Orion._theme.TextSize
-    BtnRestore.Size = UDim2.new(0, 80, 0, 28)
-    BtnRestore.Position = UDim2.new(1, -84, 0.5, -14)
-    BtnRestore.BackgroundColor3 = Orion._theme.Bg
-    BtnRestore.Parent = Overlay
+    BtnRestore.Size = UDim2.new(0, 80, 0, 28); BtnRestore.Position = UDim2.new(1, -84, 0.5, -14)
+    BtnRestore.BackgroundColor3 = Orion._theme.Bg; BtnRestore.Parent = Overlay
     roundify(BtnRestore); stroke(BtnRestore); buttonHover(BtnRestore)
 
     makeDraggable(Overlay, Overlay)
 
     local minimized = false
-    local function setMinimized(state)
-        minimized = state
-        Root.Visible = not state
-        Overlay.Visible = state
-        Orion:_updateAcrylic()
-    end
-
-    BtnClose.MouseButton1Click:Connect(function()
-        Root:Destroy(); Overlay:Destroy()
-        Orion:_updateAcrylic()
-    end)
+    local function setMinimized(state) minimized = state; Root.Visible = not state; Overlay.Visible = state; Orion:_updateAcrylic() end
+    BtnClose.MouseButton1Click:Connect(function() Root:Destroy(); Overlay:Destroy(); Orion:_updateAcrylic() end)
     BtnMin.MouseButton1Click:Connect(function() setMinimized(true) end)
     BtnRestore.MouseButton1Click:Connect(function() setMinimized(false) end)
-    UserInputService.InputBegan:Connect(function(input, gpe)
-        if gpe then return end
-        if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == minimizeKey then
-            setMinimized(not minimized)
-        end
-    end)
+    UserInputService.InputBegan:Connect(function(input, gpe) if gpe then return end if input.UserInputType==Enum.UserInputType.Keyboard and input.KeyCode==minimizeKey then setMinimized(not minimized) end end)
 
-    -- Profile Card (bottom of LeftPane)
+    -- Profile Card (bottom of LeftPane, independent of LeftList)
     local profileApi = nil
     if showProfile then
         local Card = Instance.new("Frame")
         Card.Name = "ProfileCard"
         Card.BackgroundColor3 = Orion._theme.Bg
-        Card.Size = UDim2.new(1, -20, 0, 72)
-        Card.Position = UDim2.new(0, 8, 1, -90)
-        Card.AnchorPoint = Vector2.new(0,1)
+        Card.Size = UDim2.new(1, -16, 0, 72)
         Card.Parent = LeftPane
         roundify(Card, 12); stroke(Card)
+
+        if profilePos == "top" then
+            Card.AnchorPoint = Vector2.new(0,0)
+            Card.Position = UDim2.new(0,8,0,8)
+        elseif profilePos == "center" then
+            Card.AnchorPoint = Vector2.new(0,0.5)
+            Card.Position = UDim2.new(0,8,0.5,0)
+        else -- bottom
+            Card.AnchorPoint = Vector2.new(0,1)
+            Card.Position = UDim2.new(0,8,1,-8)
+        end
 
         local Avatar = Instance.new("ImageLabel")
         Avatar.BackgroundTransparency = 1
@@ -488,9 +469,8 @@ function Orion:MakeWindow(opts)
     end
 
     local api = setmetatable({
-        _root = Root, _tabs = {}, _pages = Pages, _left = LeftPane,
-        _overlay = Overlay, _ovTitle = OvTitle, _minKey = minimizeKey,
-        _profile = profileApi,
+        _root = Root, _tabs = {}, _pages = Pages, _left = LeftPane, _leftList = LeftList,
+        _overlay = Overlay, _ovTitle = OvTitle, _minKey = minimizeKey, _profile = profileApi,
         SetMinimized = function(self2, v) setMinimized(not not v) end,
         SetMinimizeKeybind = function(self2, key) self2._minKey = key end,
         ApplyTheme = function(self2)
@@ -520,7 +500,7 @@ function WindowMT:MakeTab(opts)
     TabButton.TextColor3 = Orion._theme.Text
     TabButton.TextSize = Orion._theme.TextSize
     TabButton.Font = Orion._theme.Font
-    TabButton.Parent = self._left
+    TabButton.Parent = self._leftList -- <-- in LeftList, not LeftPane
     roundify(TabButton); stroke(TabButton); buttonHover(TabButton)
 
     local Page = Instance.new("ScrollingFrame")
