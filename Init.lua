@@ -452,7 +452,8 @@ function Acinonyx:MakeWindow(opts)
 
                 local function set(v)
                     state = not not v
-                    spring(toggle, { BackgroundColor3 = state ? Theme.Accent : Theme.Panel }, 0.12):Play()
+                    local targetColor = state and Theme.Accent or Theme.Panel
+                    spring(toggle, { BackgroundColor3 = targetColor }, 0.12):Play()
                     spring(knob, { Position = UDim2.fromOffset(state and 32 or 2, 2) }, 0.12):Play()
                     safeCallback(t.Callback, state)
                 end
