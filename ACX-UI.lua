@@ -1,6 +1,6 @@
 
 --[[
-  ACX-UI • Orion-like Library (Full) — v2.3.0
+  ACX-UI • Acinonyx-like Library (Full) — v2.3.0
   ✅ Keeps ALL features from previous "final_merged"
   ➕ Fix: ProfileCard anchored at bottom independently (LeftList container for tabs)
   Features:
@@ -14,12 +14,12 @@
     • Lightweight Config Save/Load + Theme patch + ApplyTheme()
 ]]
 
-local Orion = {}
-Orion._version = "2.3.0"
-Orion._instances, Orion._signals, Orion._windows = {}, {}, {}
+local Acinonyx = {}
+Acinonyx._version = "2.3.0"
+Acinonyx._instances, Acinonyx._signals, Acinonyx._windows = {}, {}, {}
 
 -- ===== Theme =====
-Orion._theme = {
+Acinonyx._theme = {
     Font = Enum.Font.Gotham,
     TitleSize = 18,
     TextSize  = 14,
@@ -56,14 +56,14 @@ end
 
 local function roundify(inst, r)
     local u = Instance.new("UICorner")
-    u.CornerRadius = UDim.new(0, r or Orion._theme.Round)
+    u.CornerRadius = UDim.new(0, r or Acinonyx._theme.Round)
     u.Parent = inst
     return u
 end
 
 local function stroke(inst, c)
     local s = Instance.new("UIStroke")
-    s.Color = c or Orion._theme.Stroke
+    s.Color = c or Acinonyx._theme.Stroke
     s.Thickness = 0.5  -- thinner border
     s.Transparency = 0
     s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -84,10 +84,10 @@ end
 local function createText(parent, text, size, bold, color)
     local t = Instance.new("TextLabel")
     t.BackgroundTransparency = 1
-    t.Font = Orion._theme.Font
+    t.Font = Acinonyx._theme.Font
     t.Text = text or ""
-    t.TextSize = size or Orion._theme.TextSize
-    t.TextColor3 = color or Orion._theme.Text
+    t.TextSize = size or Acinonyx._theme.TextSize
+    t.TextColor3 = color or Acinonyx._theme.Text
     t.TextXAlignment = Enum.TextXAlignment.Left
     t.TextYAlignment = Enum.TextYAlignment.Center
     t.RichText = true
@@ -122,18 +122,18 @@ local function makeDraggable(handle, target)
 end
 
 local function buttonHover(btnLikeFrame)
-    btnLikeFrame.MouseEnter:Connect(function() tween(btnLikeFrame, 0.08, {BackgroundColor3 = Orion._theme.Hover}) end)
-    btnLikeFrame.MouseLeave:Connect(function() tween(btnLikeFrame, 0.08, {BackgroundColor3 = Orion._theme.Bg2}) end)
+    btnLikeFrame.MouseEnter:Connect(function() tween(btnLikeFrame, 0.08, {BackgroundColor3 = Acinonyx._theme.Hover}) end)
+    btnLikeFrame.MouseLeave:Connect(function() tween(btnLikeFrame, 0.08, {BackgroundColor3 = Acinonyx._theme.Bg2}) end)
 end
 
 local function dropShadow(parent, radius)
     local shadow = Instance.new("ImageLabel")
     shadow.Name = "_Shadow"
     shadow.BackgroundTransparency = 1
-    shadow.Image = Orion._theme.ShadowImageId
+    shadow.Image = Acinonyx._theme.ShadowImageId
     shadow.ScaleType = Enum.ScaleType.Slice
     shadow.SliceCenter = Rect.new(10,10,118,118)
-    shadow.ImageColor3 = Orion._theme.Navy
+    shadow.ImageColor3 = Acinonyx._theme.Navy
     shadow.ImageTransparency = 0.75 -- thinner look
     shadow.Size = UDim2.new(1, 12, 1, 12)     -- half of 24
     shadow.Position = UDim2.new(0, -6, 0, -6) -- half of -12
@@ -166,7 +166,7 @@ local function getOrCreateBlur()
     return b
 end
 
-function Orion:_updateAcrylic()
+function Acinonyx:_updateAcrylic()
     local anyVisible = false
     for _,w in ipairs(self._windows or {}) do
         if w._root and w._root.Parent and w._root.Visible then
@@ -192,23 +192,23 @@ NotifyList.FillDirection = Enum.FillDirection.Vertical
 NotifyList.HorizontalAlignment = Enum.HorizontalAlignment.Right
 NotifyList.VerticalAlignment = Enum.VerticalAlignment.Bottom
 
-function Orion:MakeNotification(opts)
+function Acinonyx:MakeNotification(opts)
     opts = opts or {}
     local title = tostring(opts.Name or "Notification")
     local content = tostring(opts.Content or "")
     local time = tonumber(opts.Time or 3)
 
     local card = Instance.new("Frame")
-    card.BackgroundColor3 = Orion._theme.Bg2
+    card.BackgroundColor3 = Acinonyx._theme.Bg2
     card.Size = UDim2.new(0, 320, 0, 70)
     card.AutomaticSize = Enum.AutomaticSize.Y
-    roundify(card); stroke(card); padding(card, Orion._theme.Padding)
+    roundify(card); stroke(card); padding(card, Acinonyx._theme.Padding)
     card.Parent = NotifyLayer
 
-    local Title = createText(card, title, Orion._theme.TitleSize, true)
+    local Title = createText(card, title, Acinonyx._theme.TitleSize, true)
     Title.Size = UDim2.new(1, 0, 0, 22)
 
-    local Body = createText(card, content, Orion._theme.TextSize, false, Orion._theme.Subtext)
+    local Body = createText(card, content, Acinonyx._theme.TextSize, false, Acinonyx._theme.Subtext)
     Body.Position = UDim2.new(0, 0, 0, 24)
     Body.Size = UDim2.new(1, 0, 0, 20)
     Body.TextWrapped = true
@@ -227,23 +227,23 @@ function Orion:MakeNotification(opts)
 end
 
 -- ===== Config =====
-Orion.Config = { _data = {}, Folder = "", File = "" }
+Acinonyx.Config = { _data = {}, Folder = "", File = "" }
 
 local function fileops()
     return (typeof(writefile) == "function") and (typeof(readfile) == "function") and (typeof(isfile) == "function")
 end
 
-function Orion:BindConfig(opts)
+function Acinonyx:BindConfig(opts)
     opts = opts or {}
     self.Config.Folder = tostring(opts.Folder or "ACX_UI")
     self.Config.File   = tostring(opts.File or "config.json")
     self:MakeNotification({Name="Config", Content = "Bound to "..self.Config.Folder.."/"..self.Config.File, Time=2})
 end
 
-function Orion.Config:Set(k,v) Orion.Config._data[k] = v end
-function Orion.Config:Get(k,def) local v = Orion.Config._data[k]; if v==nil then return def end; return v end
+function Acinonyx.Config:Set(k,v) Acinonyx.Config._data[k] = v end
+function Acinonyx.Config:Get(k,def) local v = Acinonyx.Config._data[k]; if v==nil then return def end; return v end
 
-function Orion:SaveConfig()
+function Acinonyx:SaveConfig()
     if not fileops() then self:MakeNotification({Name="Save", Content="writefile/readfile not available.", Time=2}); return false end
     local folder = self.Config.Folder; local file = self.Config.File
     pcall(function() if not isfolder(folder) then makefolder(folder) end end)
@@ -253,7 +253,7 @@ function Orion:SaveConfig()
     return true
 end
 
-function Orion:LoadConfig()
+function Acinonyx:LoadConfig()
     if not fileops() then self:MakeNotification({Name="Load", Content="readfile not available.", Time=2}); return false end
     local path = string.format("%s/%s", self.Config.Folder, self.Config.File)
     if not isfile(path) then self:MakeNotification({Name="Load", Content="No config found.", Time=2}); return false end
@@ -269,7 +269,7 @@ function Orion:LoadConfig()
 end
 
 -- ===== Theme API =====
-function Orion:SetTheme(patch)
+function Acinonyx:SetTheme(patch)
     for k,v in pairs(patch or {}) do
         if self._theme[k] ~= nil then self._theme[k] = v end
     end
@@ -281,15 +281,15 @@ WindowMT.__index = WindowMT; TabMT.__index = TabMT; SectionMT.__index = SectionM
 
 local function makeItemBase(parent, height)
     local Item = Instance.new("Frame")
-    Item.BackgroundColor3 = Orion._theme.Bg2
+    Item.BackgroundColor3 = Acinonyx._theme.Bg2
     Item.Size = UDim2.new(1, 0, 0, height or 40)
-    roundify(Item); stroke(Item); padding(Item, Orion._theme.Padding)
+    roundify(Item); stroke(Item); padding(Item, Acinonyx._theme.Padding)
     Item.Parent = parent
     return Item
 end
 
 -- ===== MakeWindow =====
-function Orion:MakeWindow(opts)
+function Acinonyx:MakeWindow(opts)
     opts = opts or {}
     local windowTitle   = tostring(opts.Name or "ACX-UI Window")
     local introText     = opts.IntroText
@@ -302,12 +302,12 @@ function Orion:MakeWindow(opts)
     local profilePos    = tostring(opts.ProfileCardPosition or "bottom") -- "bottom"|"center"|"top"
 
     if introText then
-        Orion:MakeNotification({ Name = windowTitle, Content = introText, Time = 2.5 })
+        Acinonyx:MakeNotification({ Name = windowTitle, Content = introText, Time = 2.5 })
     end
 
     -- Root
     local Root = Instance.new("Frame")
-    Root.BackgroundColor3 = Orion._theme.Bg
+    Root.BackgroundColor3 = Acinonyx._theme.Bg
     Root.Size = UDim2.new(0, 600, 0, 400)
     if centerOnScreen then
         Root.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -317,31 +317,31 @@ function Orion:MakeWindow(opts)
     end
     Root.Active = true
     Root.Parent = Screen
-    roundify(Root); stroke(Root); dropShadow(Root, Orion._theme.Round)
+    roundify(Root); stroke(Root); dropShadow(Root, Acinonyx._theme.Round)
 
     local Header = Instance.new("Frame")
-    Header.BackgroundColor3 = Orion._theme.Bg2
+    Header.BackgroundColor3 = Acinonyx._theme.Bg2
     Header.Size = UDim2.new(1, 0, 0, 40)
     Header.Parent = Root
     roundify(Header)
 
-    local Title = createText(Header, windowTitle, Orion._theme.TitleSize, true)
+    local Title = createText(Header, windowTitle, Acinonyx._theme.TitleSize, true)
     Title.Size = UDim2.new(1, -140, 1, 0)
     Title.Position = UDim2.new(0, 12, 0, 0)
 
     local BtnClose = Instance.new("TextButton")
-    BtnClose.Text = "✕"; BtnClose.Font = Orion._theme.Font; BtnClose.TextColor3 = Orion._theme.Subtext; BtnClose.TextSize = 16
+    BtnClose.Text = "✕"; BtnClose.Font = Acinonyx._theme.Font; BtnClose.TextColor3 = Acinonyx._theme.Subtext; BtnClose.TextSize = 16
     BtnClose.Size = UDim2.new(0, 36, 0, 28)
     BtnClose.Position = UDim2.new(1, -44, 0, 6)
-    BtnClose.BackgroundColor3 = Orion._theme.Bg2
+    BtnClose.BackgroundColor3 = Acinonyx._theme.Bg2
     BtnClose.Parent = Header
     roundify(BtnClose); stroke(BtnClose); buttonHover(BtnClose)
 
     local BtnMin = Instance.new("TextButton")
-    BtnMin.Text = "—"; BtnMin.Font = Orion._theme.Font; BtnMin.TextColor3 = Orion._theme.Subtext; BtnMin.TextSize = 16
+    BtnMin.Text = "—"; BtnMin.Font = Acinonyx._theme.Font; BtnMin.TextColor3 = Acinonyx._theme.Subtext; BtnMin.TextSize = 16
     BtnMin.Size = UDim2.new(0, 36, 0, 28)
     BtnMin.Position = UDim2.new(1, -84, 0, 6)
-    BtnMin.BackgroundColor3 = Orion._theme.Bg2
+    BtnMin.BackgroundColor3 = Acinonyx._theme.Bg2
     BtnMin.Parent = Header
     roundify(BtnMin); stroke(BtnMin); buttonHover(BtnMin)
 
@@ -354,7 +354,7 @@ function Orion:MakeWindow(opts)
     Body.Parent = Root
 
     local LeftPane = Instance.new("Frame")
-    LeftPane.BackgroundColor3 = Orion._theme.Bg2
+    LeftPane.BackgroundColor3 = Acinonyx._theme.Bg2
     LeftPane.Size = UDim2.new(0, 170, 1, 0)
     LeftPane.Parent = Body
     roundify(LeftPane); stroke(LeftPane); padding(LeftPane, 8)
@@ -373,7 +373,7 @@ function Orion:MakeWindow(opts)
     TabList.Padding = UDim.new(0, 6)
 
     local RightPane = Instance.new("Frame")
-    RightPane.BackgroundColor3 = Orion._theme.Bg2
+    RightPane.BackgroundColor3 = Acinonyx._theme.Bg2
     RightPane.Size = UDim2.new(1, -180, 1, 0)
     RightPane.Position = UDim2.new(0, 180, 0, 0)
     RightPane.Parent = Body
@@ -388,7 +388,7 @@ function Orion:MakeWindow(opts)
         local blur = getOrCreateBlur()
         blur.Size = acrylicBlurSz
         blur.Enabled = true
-        Orion:_updateAcrylic()
+        Acinonyx:_updateAcrylic()
     end
 
     local Pages = Instance.new("Folder")
@@ -397,28 +397,28 @@ function Orion:MakeWindow(opts)
     -- Overlay (left-center)
     local Overlay = Instance.new("Frame")
     Overlay.Visible = false
-    Overlay.BackgroundColor3 = Orion._theme.Bg2
+    Overlay.BackgroundColor3 = Acinonyx._theme.Bg2
     Overlay.Size = UDim2.new(0, 220, 0, 44)
     Overlay.AnchorPoint = Vector2.new(0, 0.5)
     Overlay.Position = UDim2.new(0, 20, 0.5, 0)
     Overlay.Parent = Screen
-    roundify(Overlay); stroke(Overlay); padding(Overlay, 8); dropShadow(Overlay, Orion._theme.Round)
+    roundify(Overlay); stroke(Overlay); padding(Overlay, 8); dropShadow(Overlay, Acinonyx._theme.Round)
 
-    local OvTitle = createText(Overlay, windowTitle, Orion._theme.TextSize, true); OvTitle.Size = UDim2.new(1, -90, 1, 0)
+    local OvTitle = createText(Overlay, windowTitle, Acinonyx._theme.TextSize, true); OvTitle.Size = UDim2.new(1, -90, 1, 0)
     local BtnRestore = Instance.new("TextButton")
     BtnRestore.Text = "Restore"
-    BtnRestore.Font = Orion._theme.Font
-    BtnRestore.TextColor3 = Orion._theme.Text
-    BtnRestore.TextSize = Orion._theme.TextSize
+    BtnRestore.Font = Acinonyx._theme.Font
+    BtnRestore.TextColor3 = Acinonyx._theme.Text
+    BtnRestore.TextSize = Acinonyx._theme.TextSize
     BtnRestore.Size = UDim2.new(0, 80, 0, 28); BtnRestore.Position = UDim2.new(1, -84, 0.5, -14)
-    BtnRestore.BackgroundColor3 = Orion._theme.Bg; BtnRestore.Parent = Overlay
+    BtnRestore.BackgroundColor3 = Acinonyx._theme.Bg; BtnRestore.Parent = Overlay
     roundify(BtnRestore); stroke(BtnRestore); buttonHover(BtnRestore)
 
     makeDraggable(Overlay, Overlay)
 
     local minimized = false
-    local function setMinimized(state) minimized = state; Root.Visible = not state; Overlay.Visible = state; Orion:_updateAcrylic() end
-    BtnClose.MouseButton1Click:Connect(function() Root:Destroy(); Overlay:Destroy(); Orion:_updateAcrylic() end)
+    local function setMinimized(state) minimized = state; Root.Visible = not state; Overlay.Visible = state; Acinonyx:_updateAcrylic() end
+    BtnClose.MouseButton1Click:Connect(function() Root:Destroy(); Overlay:Destroy(); Acinonyx:_updateAcrylic() end)
     BtnMin.MouseButton1Click:Connect(function() setMinimized(true) end)
     BtnRestore.MouseButton1Click:Connect(function() setMinimized(false) end)
     UserInputService.InputBegan:Connect(function(input, gpe) if gpe then return end if input.UserInputType==Enum.UserInputType.Keyboard and input.KeyCode==minimizeKey then setMinimized(not minimized) end end)
@@ -428,7 +428,7 @@ function Orion:MakeWindow(opts)
     if showProfile then
         local Card = Instance.new("Frame")
         Card.Name = "ProfileCard"
-        Card.BackgroundColor3 = Orion._theme.Bg
+        Card.BackgroundColor3 = Acinonyx._theme.Bg
         Card.Size = UDim2.new(1, -16, 0, 72)
         Card.Parent = LeftPane
         roundify(Card, 12); stroke(Card)
@@ -458,7 +458,7 @@ function Orion:MakeWindow(opts)
         local Name = createText(Card, LocalPlayer.DisplayName or LocalPlayer.Name, 15, true)
         Name.Position = UDim2.new(0, 60, 0, 14); Name.Size = UDim2.new(1, -70, 0, 18)
 
-        local Sub = createText(Card, "@"..LocalPlayer.Name, 13, false, Orion._theme.Subtext)
+        local Sub = createText(Card, "@"..LocalPlayer.Name, 13, false, Acinonyx._theme.Subtext)
         Sub.Position = UDim2.new(0, 60, 0, 34); Sub.Size = UDim2.new(1, -70, 0, 16)
 
         profileApi = {
@@ -474,11 +474,11 @@ function Orion:MakeWindow(opts)
         SetMinimized = function(self2, v) setMinimized(not not v) end,
         SetMinimizeKeybind = function(self2, key) self2._minKey = key end,
         ApplyTheme = function(self2)
-            Root.BackgroundColor3    = Orion._theme.Bg
-            Header.BackgroundColor3  = Orion._theme.Bg2
-            LeftPane.BackgroundColor3= Orion._theme.Bg2
-            RightPane.BackgroundColor3= Orion._theme.Bg2
-            Overlay.BackgroundColor3 = Orion._theme.Bg2
+            Root.BackgroundColor3    = Acinonyx._theme.Bg
+            Header.BackgroundColor3  = Acinonyx._theme.Bg2
+            LeftPane.BackgroundColor3= Acinonyx._theme.Bg2
+            RightPane.BackgroundColor3= Acinonyx._theme.Bg2
+            Overlay.BackgroundColor3 = Acinonyx._theme.Bg2
         end,
         SetOverlayTitle = function(self2, txt) OvTitle.Text = tostring(txt) end,
         Profile = function(self2) return self2._profile end,
@@ -494,12 +494,12 @@ function WindowMT:MakeTab(opts)
     local name = tostring(opts.Name or "Tab")
 
     local TabButton = Instance.new("TextButton")
-    TabButton.BackgroundColor3 = Orion._theme.Bg2
+    TabButton.BackgroundColor3 = Acinonyx._theme.Bg2
     TabButton.Size = UDim2.new(1, 0, 0, 34)
     TabButton.Text = name
-    TabButton.TextColor3 = Orion._theme.Text
-    TabButton.TextSize = Orion._theme.TextSize
-    TabButton.Font = Orion._theme.Font
+    TabButton.TextColor3 = Acinonyx._theme.Text
+    TabButton.TextSize = Acinonyx._theme.TextSize
+    TabButton.Font = Acinonyx._theme.Font
     TabButton.Parent = self._leftList -- <-- in LeftList, not LeftPane
     roundify(TabButton); stroke(TabButton); buttonHover(TabButton)
 
@@ -524,7 +524,7 @@ function WindowMT:MakeTab(opts)
             if child:IsA("ScrollingFrame") then child.Visible = false end
         end
         Page.Visible = true
-        tween(TabButton, 0.08, {BackgroundColor3 = Orion._theme.Hover})
+        tween(TabButton, 0.08, {BackgroundColor3 = Acinonyx._theme.Hover})
     end
     TabButton.MouseButton1Click:Connect(show)
     if #self._pages:GetChildren() == 1 then show() end
@@ -539,13 +539,13 @@ function TabMT:AddSection(opts)
     local name = tostring(opts.Name or "Section")
 
     local Section = Instance.new("Frame")
-    Section.BackgroundColor3 = Orion._theme.Bg
+    Section.BackgroundColor3 = Acinonyx._theme.Bg
     Section.Size = UDim2.new(1, -6, 0, 48)
     Section.AutomaticSize = Enum.AutomaticSize.Y
     Section.Parent = self._page
     roundify(Section); stroke(Section); padding(Section, 10)
 
-    local Title = createText(Section, name, 15, true, Orion._theme.Subtext)
+    local Title = createText(Section, name, 15, true, Acinonyx._theme.Subtext)
     Title.Size = UDim2.new(1, 0, 0, 18)
 
     local Holder = Instance.new("Frame")
@@ -561,7 +561,7 @@ function TabMT:AddSection(opts)
     List.Padding = UDim.new(0, 8)
 
     local Sep = Instance.new("Frame")
-    Sep.BackgroundColor3 = Orion._theme.Stroke
+    Sep.BackgroundColor3 = Acinonyx._theme.Stroke
     Sep.BorderSizePixel = 0
     Sep.Size = UDim2.new(1, 0, 0, 1)
     Sep.Position = UDim2.new(0, 0, 0, 22)
@@ -576,7 +576,7 @@ function SectionMT:AddLabel(opts)
     opts = opts or {}
     local text = tostring(opts.Text or "Label")
     local Item = makeItemBase(self._holder, 34)
-    local L = createText(Item, text, Orion._theme.TextSize)
+    local L = createText(Item, text, Acinonyx._theme.TextSize)
     L.Size = UDim2.new(1, 0, 1, 0)
     return { Set = function(_, t) L.Text = tostring(t) end }
 end
@@ -588,10 +588,10 @@ function SectionMT:AddParagraph(opts)
     local Item = makeItemBase(self._holder, 64)
     Item.AutomaticSize = Enum.AutomaticSize.Y
 
-    local T = createText(Item, title, Orion._theme.TextSize, true)
+    local T = createText(Item, title, Acinonyx._theme.TextSize, true)
     T.Size = UDim2.new(1, 0, 0, 18)
 
-    local C = createText(Item, content, Orion._theme.TextSize, false, Orion._theme.Subtext)
+    local C = createText(Item, content, Acinonyx._theme.TextSize, false, Acinonyx._theme.Subtext)
     C.Position = UDim2.new(0, 0, 0, 20)
     C.Size = UDim2.new(1, 0, 0, 20)
     C.TextWrapped = true
@@ -611,15 +611,15 @@ function SectionMT:AddButton(opts)
     local Item = makeItemBase(self._holder, 36)
     local B = Instance.new("TextButton")
     B.BackgroundTransparency = 1
-    B.Font = Orion._theme.Font
+    B.Font = Acinonyx._theme.Font
     B.Text = name
-    B.TextColor3 = Orion._theme.Text
-    B.TextSize = Orion._theme.TextSize
+    B.TextColor3 = Acinonyx._theme.Text
+    B.TextSize = Acinonyx._theme.TextSize
     B.Size = UDim2.new(1, 0, 1, 0)
     B.Parent = Item
 
-    B.MouseEnter:Connect(function() tween(Item, 0.08, {BackgroundColor3 = Orion._theme.Hover}) end)
-    B.MouseLeave:Connect(function() tween(Item, 0.08, {BackgroundColor3 = Orion._theme.Bg2}) end)
+    B.MouseEnter:Connect(function() tween(Item, 0.08, {BackgroundColor3 = Acinonyx._theme.Hover}) end)
+    B.MouseLeave:Connect(function() tween(Item, 0.08, {BackgroundColor3 = Acinonyx._theme.Bg2}) end)
     B.MouseButton1Click:Connect(function() task.spawn(cb) end)
 
     return { Set = function(_, label) B.Text = tostring(label) end, Fire = function() task.spawn(cb) end }
@@ -638,7 +638,7 @@ function SectionMT:AddToggle(opts)
     local Btn = Instance.new("TextButton")
     Btn.Size = UDim2.new(0, 42, 0, 22)
     Btn.Position = UDim2.new(1, -48, 0.5, -11)
-    Btn.BackgroundColor3 = Orion._theme.Bg
+    Btn.BackgroundColor3 = Acinonyx._theme.Bg
     Btn.Text = ""
     Btn.Parent = Item
     roundify(Btn, 999); stroke(Btn)
@@ -646,7 +646,7 @@ function SectionMT:AddToggle(opts)
     local Dot = Instance.new("Frame")
     Dot.Size = UDim2.new(0, 18, 0, 18)
     Dot.Position = UDim2.new(0, 2, 0.5, -9)
-    Dot.BackgroundColor3 = Orion._theme.Stroke
+    Dot.BackgroundColor3 = Acinonyx._theme.Stroke
     Dot.Parent = Btn
     roundify(Dot, 999)
 
@@ -654,11 +654,11 @@ function SectionMT:AddToggle(opts)
     local function setState(on, silent)
         state = on
         if on then
-            tween(Btn, 0.08, {BackgroundColor3 = Orion._theme.Accent})
+            tween(Btn, 0.08, {BackgroundColor3 = Acinonyx._theme.Accent})
             tween(Dot, 0.08, {Position = UDim2.new(1, -20, 0.5, -9), BackgroundColor3 = Color3.new(1,1,1)})
         else
-            tween(Btn, 0.08, {BackgroundColor3 = Orion._theme.Bg})
-            tween(Dot, 0.08, {Position = UDim2.new(0, 2, 0.5, -9), BackgroundColor3 = Orion._theme.Stroke})
+            tween(Btn, 0.08, {BackgroundColor3 = Acinonyx._theme.Bg})
+            tween(Dot, 0.08, {Position = UDim2.new(0, 2, 0.5, -9), BackgroundColor3 = Acinonyx._theme.Stroke})
         end
         if not silent then task.spawn(cb, on) end
     end
@@ -687,14 +687,14 @@ function SectionMT:AddSlider(opts)
     L.Size = UDim2.new(1, 0, 0, 18)
 
     local Bar = Instance.new("Frame")
-    Bar.BackgroundColor3 = Orion._theme.Bg
+    Bar.BackgroundColor3 = Acinonyx._theme.Bg
     Bar.Size = UDim2.new(1, -10, 0, 10)
     Bar.Position = UDim2.new(0, 5, 0, 28)
     Bar.Parent = Item
     roundify(Bar, 999); stroke(Bar)
 
     local Fill = Instance.new("Frame")
-    Fill.BackgroundColor3 = Orion._theme.Accent
+    Fill.BackgroundColor3 = Acinonyx._theme.Accent
     Fill.Size = UDim2.new((def-min)/(max-min), 0, 1, 0)
     Fill.Parent = Bar
     roundify(Fill, 999)
@@ -742,13 +742,13 @@ function SectionMT:AddDropdown(opts)
     local Box = Instance.new("TextButton")
     Box.Size = UDim2.new(0, 140, 0, 26)
     Box.Position = UDim2.new(1, -146, 0.5, -13)
-    Box.BackgroundColor3 = Orion._theme.Bg
+    Box.BackgroundColor3 = Acinonyx._theme.Bg
     Box.Text = tostring(def or "Select...")
-    Box.Font = Orion._theme.Font
-    Box.TextSize = Orion._theme.TextSize
-    Box.TextColor3 = Orion._theme.Text
+    Box.Font = Acinonyx._theme.Font
+    Box.TextSize = Acinonyx._theme.TextSize
+    Box.TextColor3 = Acinonyx._theme.Text
     Box.Parent = Item
-    roundify(Box); stroke(Box, Orion._theme.Navy)
+    roundify(Box); stroke(Box, Acinonyx._theme.Navy)
 
     local Menu; local selected = def
     local function choose(v)
@@ -760,31 +760,31 @@ function SectionMT:AddDropdown(opts)
     Box.MouseButton1Click:Connect(function()
         if Menu then Menu.Visible = not Menu.Visible; return end
         Menu = Instance.new("Frame")
-        Menu.BackgroundColor3 = Orion._theme.Bg
+        Menu.BackgroundColor3 = Acinonyx._theme.Bg
         Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, math.clamp(#list*28, 36, 180))
         Menu.Position = UDim2.new(0, Box.AbsolutePosition.X - Item.AbsolutePosition.X, 0, Box.AbsolutePosition.Y - Item.AbsolutePosition.Y + Box.AbsoluteSize.Y + 4)
         Menu.Parent = Item
-        roundify(Menu); stroke(Menu, Orion._theme.Navy); padding(Menu, 4)
+        roundify(Menu); stroke(Menu, Acinonyx._theme.Navy); padding(Menu, 4)
 
         local L = Instance.new("UIListLayout"); L.Parent = Menu; L.SortOrder = Enum.SortOrder.LayoutOrder; L.Padding = UDim.new(0, 4)
         for _, opt in ipairs(list) do
             local row = Instance.new("TextButton")
-            row.BackgroundColor3 = Orion._theme.Bg2
+            row.BackgroundColor3 = Acinonyx._theme.Bg2
             row.Text = tostring(opt)
-            row.TextColor3 = Orion._theme.Text
-            row.TextSize = Orion._theme.TextSize
-            row.Font = Orion._theme.Font
+            row.TextColor3 = Acinonyx._theme.Text
+            row.TextSize = Acinonyx._theme.TextSize
+            row.Font = Acinonyx._theme.Font
             row.Size = UDim2.new(1, 0, 0, 24)
             row.Parent = Menu
-            roundify(row); stroke(row, Orion._theme.Navy)
-            row.MouseEnter:Connect(function() tween(row, 0.08, {BackgroundColor3 = Orion._theme.NavySoft}) end)
-            row.MouseLeave:Connect(function() if selected ~= opt then tween(row, 0.08, {BackgroundColor3 = Orion._theme.Bg2}) end end)
+            roundify(row); stroke(row, Acinonyx._theme.Navy)
+            row.MouseEnter:Connect(function() tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.NavySoft}) end)
+            row.MouseLeave:Connect(function() if selected ~= opt then tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.Bg2}) end end)
             row.MouseButton1Click:Connect(function()
                 choose(opt)
                 for _, r in ipairs(Menu:GetChildren()) do
-                    if r:IsA("TextButton") then tween(r, 0.08, {BackgroundColor3 = Orion._theme.Bg2}) end
+                    if r:IsA("TextButton") then tween(r, 0.08, {BackgroundColor3 = Acinonyx._theme.Bg2}) end
                 end
-                tween(row, 0.08, {BackgroundColor3 = Orion._theme.Navy})
+                tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.Navy})
             end)
         end
     end)
@@ -820,13 +820,13 @@ function SectionMT:AddMultiDropdown(opts)
     local Box = Instance.new("TextButton")
     Box.Size = UDim2.new(0, 180, 0, 26)
     Box.Position = UDim2.new(1, -186, 0.5, -13)
-    Box.BackgroundColor3 = Orion._theme.Bg
+    Box.BackgroundColor3 = Acinonyx._theme.Bg
     Box.Text = "Select multiple"
-    Box.Font = Orion._theme.Font
-    Box.TextSize = Orion._theme.TextSize
-    Box.TextColor3 = Orion._theme.Text
+    Box.Font = Acinonyx._theme.Font
+    Box.TextSize = Acinonyx._theme.TextSize
+    Box.TextColor3 = Acinonyx._theme.Text
     Box.Parent = Item
-    roundify(Box); stroke(Box, Orion._theme.Navy)
+    roundify(Box); stroke(Box, Acinonyx._theme.Navy)
 
     local function selectedList()
         local t = {}
@@ -847,29 +847,29 @@ function SectionMT:AddMultiDropdown(opts)
     Box.MouseButton1Click:Connect(function()
         if Menu then Menu.Visible = not Menu.Visible; return end
         Menu = Instance.new("Frame")
-        Menu.BackgroundColor3 = Orion._theme.Bg
+        Menu.BackgroundColor3 = Acinonyx._theme.Bg
         Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, math.clamp(#list*30, 36, 220))
         Menu.Position = UDim2.new(0, Box.AbsolutePosition.X - Item.AbsolutePosition.X, 0, Box.AbsolutePosition.Y - Item.AbsolutePosition.Y + Box.AbsoluteSize.Y + 4)
         Menu.Parent = Item
-        roundify(Menu); stroke(Menu, Orion._theme.Navy); padding(Menu, 4)
+        roundify(Menu); stroke(Menu, Acinonyx._theme.Navy); padding(Menu, 4)
 
         local L = Instance.new("UIListLayout"); L.Parent = Menu; L.SortOrder = Enum.SortOrder.LayoutOrder; L.Padding = UDim.new(0, 4)
         for _, opt in ipairs(list) do
             local key = tostring(opt)
             local row = Instance.new("TextButton")
-            row.BackgroundColor3 = selectedSet[key] and Orion._theme.Navy or Orion._theme.Bg2
+            row.BackgroundColor3 = selectedSet[key] and Acinonyx._theme.Navy or Acinonyx._theme.Bg2
             row.Text = key
-            row.TextColor3 = Orion._theme.Text
-            row.TextSize = Orion._theme.TextSize
-            row.Font = Orion._theme.Font
+            row.TextColor3 = Acinonyx._theme.Text
+            row.TextSize = Acinonyx._theme.TextSize
+            row.Font = Acinonyx._theme.Font
             row.Size = UDim2.new(1, 0, 0, 24)
             row.Parent = Menu
-            roundify(row); stroke(row, Orion._theme.Navy)
-            row.MouseEnter:Connect(function() if not selectedSet[key] then tween(row, 0.08, {BackgroundColor3 = Orion._theme.NavySoft}) end end)
-            row.MouseLeave:Connect(function() if not selectedSet[key] then tween(row, 0.08, {BackgroundColor3 = Orion._theme.Bg2}) end end)
+            roundify(row); stroke(row, Acinonyx._theme.Navy)
+            row.MouseEnter:Connect(function() if not selectedSet[key] then tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.NavySoft}) end end)
+            row.MouseLeave:Connect(function() if not selectedSet[key] then tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.Bg2}) end end)
             row.MouseButton1Click:Connect(function()
                 selectedSet[key] = not selectedSet[key]
-                tween(row, 0.08, {BackgroundColor3 = selectedSet[key] and Orion._theme.Navy or Orion._theme.Bg2})
+                tween(row, 0.08, {BackgroundColor3 = selectedSet[key] and Acinonyx._theme.Navy or Acinonyx._theme.Bg2})
                 updateBoxText(); fire()
             end)
         end
@@ -909,13 +909,13 @@ function SectionMT:AddTextbox(opts)
     local Box = Instance.new("TextBox")
     Box.Size = UDim2.new(0, 180, 0, 26)
     Box.Position = UDim2.new(1, -186, 0.5, -13)
-    Box.BackgroundColor3 = Orion._theme.Bg
+    Box.BackgroundColor3 = Acinonyx._theme.Bg
     Box.Text = default
     Box.PlaceholderText = placeholder
     Box.ClearTextOnFocus = clearOnFocus
-    Box.Font = Orion._theme.Font
-    Box.TextSize = Orion._theme.TextSize
-    Box.TextColor3 = Orion._theme.Text
+    Box.Font = Acinonyx._theme.Font
+    Box.TextSize = Acinonyx._theme.TextSize
+    Box.TextColor3 = Acinonyx._theme.Text
     Box.Parent = Item
     roundify(Box); stroke(Box)
 
@@ -939,11 +939,11 @@ function SectionMT:AddKeybind(opts)
     local Box = Instance.new("TextButton")
     Box.Size = UDim2.new(0, 160, 0, 26)
     Box.Position = UDim2.new(1, -166, 0.5, -13)
-    Box.BackgroundColor3 = Orion._theme.Bg
+    Box.BackgroundColor3 = Acinonyx._theme.Bg
     Box.Text = def.Name
-    Box.Font = Orion._theme.Font
-    Box.TextSize = Orion._theme.TextSize
-    Box.TextColor3 = Orion._theme.Text
+    Box.Font = Acinonyx._theme.Font
+    Box.TextSize = Acinonyx._theme.TextSize
+    Box.TextColor3 = Acinonyx._theme.Text
     Box.Parent = Item
     roundify(Box); stroke(Box)
 
@@ -964,6 +964,6 @@ function SectionMT:AddKeybind(opts)
     return { Set = function(_, k) if typeof(k)=="EnumItem" then setKey(k) end end, Get = function() return current end }
 end
 
-function Orion:Destroy() if Screen then Screen:Destroy() end end
+function Acinonyx:Destroy() if Screen then Screen:Destroy() end end
 
-return Orion
+return Acinonyx
