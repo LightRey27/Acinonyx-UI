@@ -1,21 +1,20 @@
 
 --[[
-  ACX-UI • Acinonyx-like Library (Full) — v2.3.0
-  ✅ Keeps ALL features from previous "final_merged"
-  ➕ Fix: ProfileCard anchored at bottom independently (LeftList container for tabs)
-  Features:
-    • Acrylic (transparent + blur) with options
-    • Window centered on screen
-    • Notifications stacked bottom-right
-    • Minimize system + draggable overlay (left-center)
-    • Profile Card docked at bottom of tab list (not affected by UIListLayout)
-    • Thin shadow outline (50%) + thin border stroke
-    • Tabs, Sections, Elements: Label, Paragraph, Button, Toggle, Slider, Dropdown, MultiDropdown, Textbox, Keybind
-    • Lightweight Config Save/Load + Theme patch + ApplyTheme()
+  Acinonyx-UI • Full Build — v2.3.1
+  ✅ Semua fitur lengkap (tidak ada yang dipangkas):
+     - Acrylic (transparent + blur)
+     - Centered window
+     - Notifications bottom-right
+     - Minimize + overlay (left-center), draggable
+     - Profile Card di bawah kiri (independen dari UIListLayout)
+     - Thin shadow/outline 50%
+     - Tabs, Sections, Elements: Label, Paragraph, Button, Toggle, Slider, Dropdown, MultiDropdown, Textbox, Keybind
+     - Config Save/Load, Theme patch, ApplyTheme()
+  🛠️ Fix: Dropdown & MultiDropdown menus diparent ke ScreenGui (ZIndex tinggi) + close-on-outside click
 ]]
 
 local Acinonyx = {}
-Acinonyx._version = "2.3.0"
+Acinonyx._version = "2.3.1"
 Acinonyx._instances, Acinonyx._signals, Acinonyx._windows = {}, {}, {}
 
 -- ===== Theme =====
@@ -25,7 +24,6 @@ Acinonyx._theme = {
     TextSize  = 14,
     Round     = 10,
     Padding   = 8,
-    -- Palette
     Navy     = Color3.fromRGB(12, 36, 78),
     NavySoft = Color3.fromRGB(18, 48, 96),
     Bg       = Color3.fromRGB(16, 17, 20),
@@ -291,7 +289,7 @@ end
 -- ===== MakeWindow =====
 function Acinonyx:MakeWindow(opts)
     opts = opts or {}
-    local windowTitle   = tostring(opts.Name or "ACX-UI Window")
+    local windowTitle   = tostring(opts.Name or "Acinonyx Window")
     local introText     = opts.IntroText
     local minimizeKey   = opts.MinimizeKeybind or Enum.KeyCode.RightControl
     local acrylicOn     = (opts.Acrylic ~= false)
@@ -359,7 +357,7 @@ function Acinonyx:MakeWindow(opts)
     LeftPane.Parent = Body
     roundify(LeftPane); stroke(LeftPane); padding(LeftPane, 8)
 
-    -- NEW: dedicated container for tab buttons so ProfileCard is independent
+    -- Dedicated container for tab buttons so ProfileCard is independent
     local LeftList = Instance.new("Frame")
     LeftList.Name = "LeftList"
     LeftList.BackgroundTransparency = 1
@@ -751,19 +749,38 @@ function SectionMT:AddDropdown(opts)
     roundify(Box); stroke(Box, Acinonyx._theme.Navy)
 
     local Menu; local selected = def
+    local outsideConn
+
     local function choose(v)
         selected = v; Box.Text = tostring(v); task.spawn(cb, v)
         if Menu then Menu.Visible = false end
+        if outsideConn then outsideConn:Disconnect(); outsideConn=nil end
         return v
     end
 
     Box.MouseButton1Click:Connect(function()
-        if Menu then Menu.Visible = not Menu.Visible; return end
+        if Menu then
+            Menu.Visible = not Menu.Visible
+            if Menu.Visible then
+                outsideConn = UserInputService.InputBegan:Connect(function(input,gpe)
+                    if gpe then return end
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        local pos = input.Position
+                        if not (pos.X >= Menu.AbsolutePosition.X and pos.X <= Menu.AbsolutePosition.X + Menu.AbsoluteSize.X
+                            and pos.Y >= Menu.AbsolutePosition.Y and pos.Y <= Menu.AbsolutePosition.Y + Menu.AbsoluteSize.Y) then
+                            Menu.Visible = false; outsideConn:Disconnect(); outsideConn=nil
+                        end
+                    end
+                end)
+            end
+            return
+        end
         Menu = Instance.new("Frame")
         Menu.BackgroundColor3 = Acinonyx._theme.Bg
         Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, math.clamp(#list*28, 36, 180))
-        Menu.Position = UDim2.new(0, Box.AbsolutePosition.X - Item.AbsolutePosition.X, 0, Box.AbsolutePosition.Y - Item.AbsolutePosition.Y + Box.AbsoluteSize.Y + 4)
-        Menu.Parent = Item
+        Menu.Position = UDim2.new(0, Box.AbsolutePosition.X, 0, Box.AbsolutePosition.Y + Box.AbsoluteSize.Y + 4)
+        Menu.Parent = Screen -- parent to top layer
+        Menu.ZIndex = 500
         roundify(Menu); stroke(Menu, Acinonyx._theme.Navy); padding(Menu, 4)
 
         local L = Instance.new("UIListLayout"); L.Parent = Menu; L.SortOrder = Enum.SortOrder.LayoutOrder; L.Padding = UDim.new(0, 4)
@@ -776,6 +793,7 @@ function SectionMT:AddDropdown(opts)
             row.Font = Acinonyx._theme.Font
             row.Size = UDim2.new(1, 0, 0, 24)
             row.Parent = Menu
+            row.ZIndex = 501
             roundify(row); stroke(row, Acinonyx._theme.Navy)
             row.MouseEnter:Connect(function() tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.NavySoft}) end)
             row.MouseLeave:Connect(function() if selected ~= opt then tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.Bg2}) end end)
@@ -787,6 +805,17 @@ function SectionMT:AddDropdown(opts)
                 tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.Navy})
             end)
         end
+
+        outsideConn = UserInputService.InputBegan:Connect(function(input,gpe)
+            if gpe then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                local pos = input.Position
+                if not (pos.X >= Menu.AbsolutePosition.X and pos.X <= Menu.AbsolutePosition.X + Menu.AbsoluteSize.X
+                    and pos.Y >= Menu.AbsolutePosition.Y and pos.Y <= Menu.AbsolutePosition.Y + Menu.AbsoluteSize.Y) then
+                    Menu.Visible = false; outsideConn:Disconnect(); outsideConn=nil
+                end
+            end
+        end)
     end)
 
     if def then choose(def) end
@@ -810,9 +839,7 @@ function SectionMT:AddMultiDropdown(opts)
     local cb    = opts.Callback or function(_) end
 
     local selectedSet = {}
-    if typeof(defs) == "table" then
-        for _, v in ipairs(defs) do selectedSet[tostring(v)] = true end
-    end
+    if typeof(defs) == "table" then for _, v in ipairs(defs) do selectedSet[tostring(v)] = true end end
 
     local Item  = makeItemBase(self._holder, 40)
     local Label = createText(Item, name); Label.Size = UDim2.new(1, -200, 1, 0)
@@ -841,19 +868,36 @@ function SectionMT:AddMultiDropdown(opts)
         else Box.Text = tostring(#t).." selected" end
     end
 
-    local Menu
+    local Menu; local outsideConn
     local function fire() task.spawn(cb, selectedList()) end
 
     Box.MouseButton1Click:Connect(function()
-        if Menu then Menu.Visible = not Menu.Visible; return end
+        if Menu then
+            Menu.Visible = not Menu.Visible
+            if Menu.Visible then
+                outsideConn = UserInputService.InputBegan:Connect(function(input,gpe)
+                    if gpe then return end
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        local pos = input.Position
+                        if not (pos.X >= Menu.AbsolutePosition.X and pos.X <= Menu.AbsolutePosition.X + Menu.AbsoluteSize.X
+                            and pos.Y >= Menu.AbsolutePosition.Y and pos.Y <= Menu.AbsolutePosition.Y + Menu.AbsoluteSize.Y) then
+                            Menu.Visible = false; outsideConn:Disconnect(); outsideConn=nil
+                        end
+                    end
+                end)
+            end
+            return
+        end
+
         Menu = Instance.new("Frame")
         Menu.BackgroundColor3 = Acinonyx._theme.Bg
         Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, math.clamp(#list*30, 36, 220))
-        Menu.Position = UDim2.new(0, Box.AbsolutePosition.X - Item.AbsolutePosition.X, 0, Box.AbsolutePosition.Y - Item.AbsolutePosition.Y + Box.AbsoluteSize.Y + 4)
-        Menu.Parent = Item
+        Menu.Position = UDim2.new(0, Box.AbsolutePosition.X, 0, Box.AbsolutePosition.Y + Box.AbsoluteSize.Y + 4)
+        Menu.Parent = Screen -- parent to top layer
+        Menu.ZIndex = 500
         roundify(Menu); stroke(Menu, Acinonyx._theme.Navy); padding(Menu, 4)
 
-        local L = Instance.new("UIListLayout"); L.Parent = Menu; L.SortOrder = Enum.SortOrder.LayoutOrder; L.Padding = UDim.new(0, 4)
+        local L = Instance.new("UIListLayout"); L.Parent = Menu; L.SortOrder=Enum.SortOrder.LayoutOrder; L.Padding=UDim.new(0,4)
         for _, opt in ipairs(list) do
             local key = tostring(opt)
             local row = Instance.new("TextButton")
@@ -864,6 +908,7 @@ function SectionMT:AddMultiDropdown(opts)
             row.Font = Acinonyx._theme.Font
             row.Size = UDim2.new(1, 0, 0, 24)
             row.Parent = Menu
+            row.ZIndex = 501
             roundify(row); stroke(row, Acinonyx._theme.Navy)
             row.MouseEnter:Connect(function() if not selectedSet[key] then tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.NavySoft}) end end)
             row.MouseLeave:Connect(function() if not selectedSet[key] then tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.Bg2}) end end)
@@ -873,6 +918,17 @@ function SectionMT:AddMultiDropdown(opts)
                 updateBoxText(); fire()
             end)
         end
+
+        outsideConn = UserInputService.InputBegan:Connect(function(input,gpe)
+            if gpe then return end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                local pos = input.Position
+                if not (pos.X >= Menu.AbsolutePosition.X and pos.X <= Menu.AbsolutePosition.X + Menu.AbsoluteSize.X
+                    and pos.Y >= Menu.AbsolutePosition.Y and pos.Y <= Menu.AbsolutePosition.Y + Menu.AbsoluteSize.Y) then
+                    Menu.Visible = false; outsideConn:Disconnect(); outsideConn=nil
+                end
+            end
+        end)
     end)
 
     updateBoxText(); fire()
