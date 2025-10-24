@@ -140,61 +140,36 @@ local function dropShadow(parent, radius)
     if radius then
         local u = Instance.new("UICorner"); u.CornerRadius = UDim.new(0, radius); u.Parent = shadow
     end
-    return shadow
-end
 
-
-
--- Utility: sticky-follow for menus so they truly stick under the source button (inset-aware)
-local function attachStickyFollow(menu, box, screen)
+-- Utility: sticky-follow ala Fluent/Linoria
+local function attachStickyFollow(menu, box, popupRoot)
     local RS = game:GetService("RunService")
     local GuiService = game:GetService("GuiService")
     local conns = {}
 
-    local function setPos()
+    local function placeUnder()
         if not menu or not menu.Parent or not menu.Visible then return end
-        local ap = box.AbsolutePosition
-        local as = box.AbsoluteSize
-        local inset = GuiService:GetGuiInset() -- Vector2
-        -- account for top-left inset so the visual position matches the box
+        local ap, as = box.AbsolutePosition, box.AbsoluteSize
+        local inset = GuiService:GetGuiInset()
         menu.Position = UDim2.fromOffset(ap.X - inset.X, ap.Y - inset.Y + as.Y + 4)
     end
 
-    -- initial
-    setPos()
-
-    -- follow every frame + relevant property changes
-    table.insert(conns, RS.RenderStepped:Connect(setPos))
-    table.insert(conns, box:GetPropertyChangedSignal("AbsolutePosition"):Connect(setPos))
-    table.insert(conns, box:GetPropertyChangedSignal("AbsoluteSize"):Connect(setPos))
-
+    placeUnder()
+    table.insert(conns, RS.RenderStepped:Connect(placeUnder))
+    table.insert(conns, box:GetPropertyChangedSignal("AbsolutePosition"):Connect(placeUnder))
+    table.insert(conns, box:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeUnder))
     local sf = box:FindFirstAncestorWhichIsA("ScrollingFrame")
     if sf then
-        table.insert(conns, sf:GetPropertyChangedSignal("CanvasPosition"):Connect(setPos))
-        table.insert(conns, sf:GetPropertyChangedSignal("AbsoluteWindowSize"):Connect(setPos))
+        table.insert(conns, sf:GetPropertyChangedSignal("CanvasPosition"):Connect(placeUnder))
+        table.insert(conns, sf:GetPropertyChangedSignal("AbsoluteWindowSize"):Connect(placeUnder))
     end
-
-    -- when menu destroyed, cleanup
     menu.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            for _,c in ipairs(conns) do pcall(function() c:Disconnect() end) end
-        end
+        if not parent then for _,c in ipairs(conns) do pcall(function() c:Disconnect() end) end end
     end)
-
-    return { Update = setPos,
-             Disconnect = function()
-                 for _,c in ipairs(conns) do pcall(function() c:Disconnect() end) end
-             end }
+    return { Update = placeUnder, Disconnect = function() for _,c in ipairs(conns) do pcall(function() c:Disconnect() end) end end }
 end
-        local absPos  = box.AbsolutePosition
-        local absSize = box.AbsoluteSize
-        local x = math.clamp(absPos.X, 0, screen.AbsoluteSize.X - menu.AbsoluteSize.X)
-        local y = math.clamp(absPos.Y + absSize.Y + 4, 0, screen.AbsoluteSize.Y - menu.AbsoluteSize.Y)
-        menu.Position = UDim2.fromOffset(x, y)
-    end
-    conn = game:GetService("RunService").RenderStepped:Connect(update)
-    menu.AncestryChanged:Connect(function(_, parent) if not parent then if conn then conn:Disconnect() end end end)
-    return { Disconnect=function() if conn then conn:Disconnect() end end, Update=update }
+
+    return shadow
 end
 
 -- ===== Screen =====
@@ -204,6 +179,15 @@ Screen.IgnoreGuiInset = true
 Screen.ResetOnSpawn = false
 Screen.ZIndexBehavior = Enum.ZIndexBehavior.Global
 Screen.Parent = (RunService:IsStudio() and LocalPlayer:FindFirstChildOfClass("PlayerGui")) or LocalPlayer.PlayerGui
+
+-- PopupRoot: container pop-up/dropdown agar tidak ke-clip dan selalu di depan
+local PopupRoot = Instance.new("Frame")
+PopupRoot.Name = "PopupRoot"
+PopupRoot.BackgroundTransparency = 1
+PopupRoot.Size = UDim2.fromScale(1,1)
+PopupRoot.ZIndex = 500
+PopupRoot.Parent = Screen
+
 
 -- ===== Acrylic helpers =====
 local function getOrCreateBlur()
@@ -820,167 +804,10 @@ function SectionMT:AddDropdown(opts)
                     if gpe then return end
                     if input.UserInputType == Enum.UserInputType.MouseButton1 then
                         local pos = input.Position
-                        if not (pos.X >= Menu.AbsolutePosition.X and pos.X <= Menu.AbsolutePosition.X + Menu.AbsoluteSize.X
-                            and pos.Y >= Menu.AbsolutePosition.Y and pos.Y <= Menu.AbsolutePosition.Y + Menu.AbsoluteSize.Y) then
-                            Menu.Visible = false; outsideConn:Disconnect(); outsideConn=nil
-                        end
-                    end
-                end)
-            end
-            return
-        end
-        Menu = Instance.new("Frame")
-        local _stick = attachStickyFollow(Menu, Box, Screen); _stick.Update()
-        Menu.BackgroundColor3 = Acinonyx._theme.Bg
-        Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, math.clamp(#list*28, 36, 180))
-        Menu.Position = UDim2.new(0, Box.AbsolutePosition.X, 0, Box.AbsolutePosition.Y + Box.AbsoluteSize.Y + 4)
-        Menu.Parent = Screen -- parent to top layer
-        Menu.ZIndex = 500
-        roundify(Menu); stroke(Menu, Acinonyx._theme.Navy); padding(Menu, 4)
-
-        local L = Instance.new("UIListLayout"); L.Parent = Menu; L.SortOrder = Enum.SortOrder.LayoutOrder; L.Padding = UDim.new(0, 4)
-        for _, opt in ipairs(list) do
-            local row = Instance.new("TextButton")
-            row.BackgroundColor3 = Acinonyx._theme.Bg2
-            row.Text = tostring(opt)
-            row.TextColor3 = Acinonyx._theme.Text
-            row.TextSize = Acinonyx._theme.TextSize
-            row.Font = Acinonyx._theme.Font
-            row.Size = UDim2.new(1, 0, 0, 24)
-            row.Parent = Menu
-            row.ZIndex = 501
-            roundify(row); stroke(row, Acinonyx._theme.Navy)
-            row.MouseEnter:Connect(function() tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.NavySoft}) end)
-            row.MouseLeave:Connect(function() if selected ~= opt then tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.Bg2}) end end)
-            row.MouseButton1Click:Connect(function()
-                choose(opt)
-                for _, r in ipairs(Menu:GetChildren()) do
-                    if r:IsA("TextButton") then tween(r, 0.08, {BackgroundColor3 = Acinonyx._theme.Bg2}) end
-                end
-                tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.Navy})
-            end)
-        end
-
-        outsideConn = UserInputService.InputBegan:Connect(function(input,gpe)
-            if gpe then return end
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                local pos = input.Position
-                if not (pos.X >= Menu.AbsolutePosition.X and pos.X <= Menu.AbsolutePosition.X + Menu.AbsoluteSize.X
-                    and pos.Y >= Menu.AbsolutePosition.Y and pos.Y <= Menu.AbsolutePosition.Y + Menu.AbsoluteSize.Y) then
-                    Menu.Visible = false; outsideConn:Disconnect(); outsideConn=nil
-                end
-            end
-        end)
-    end)
-
-    if def then choose(def) end
-
-    return {
-        Set = function(_, v) choose(v) end,
-        Get = function() return selected end,
-        Refresh = function(_, newList, newDefault)
-            list = newList or list
-            if Menu then Menu:Destroy(); Menu = nil end
-            if newDefault ~= nil then choose(newDefault) end
-        end
-    }
-end
-
-function SectionMT:AddMultiDropdown(opts)
-    opts = opts or {}
-    local name  = tostring(opts.Name or "Multi Dropdown")
-    local list  = opts.Options or {}
-    local defs  = opts.Default or {}
-    local cb    = opts.Callback or function(_) end
-
-    local selectedSet = {}
-    if typeof(defs) == "table" then for _, v in ipairs(defs) do selectedSet[tostring(v)] = true end end
-
-    local Item  = makeItemBase(self._holder, 40)
-    local Label = createText(Item, name); Label.Size = UDim2.new(1, -200, 1, 0)
-
-    local Box = Instance.new("TextButton")
-    Box.Size = UDim2.new(0, 180, 0, 26)
-    Box.Position = UDim2.new(1, -186, 0.5, -13)
-    Box.BackgroundColor3 = Acinonyx._theme.Bg
-    Box.Text = "Select multiple"
-    Box.Font = Acinonyx._theme.Font
-    Box.TextSize = Acinonyx._theme.TextSize
-    Box.TextColor3 = Acinonyx._theme.Text
-    Box.Parent = Item
-    roundify(Box); stroke(Box, Acinonyx._theme.Navy)
-
-    local function selectedList()
-        local t = {}
-        for _, opt in ipairs(list) do if selectedSet[tostring(opt)] then table.insert(t, opt) end end
-        return t
-    end
-
-    local function updateBoxText()
-        local t = selectedList()
-        if #t == 0 then Box.Text = "Select multiple"
-        elseif #t <= 3 then Box.Text = table.concat(t, ", ")
-        else Box.Text = tostring(#t).." selected" end
-    end
-
-    local Menu; local outsideConn
-    local function fire() task.spawn(cb, selectedList()) end
-
-    Box.MouseButton1Click:Connect(function()
-        if Menu then
-            Menu.Visible = not Menu.Visible
-            if Menu.Visible then
-                outsideConn = UserInputService.InputBegan:Connect(function(input,gpe)
-                    if gpe then return end
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        local pos = input.Position
-                        if not (pos.X >= Menu.AbsolutePosition.X and pos.X <= Menu.AbsolutePosition.X + Menu.AbsoluteSize.X
-                            and pos.Y >= Menu.AbsolutePosition.Y and pos.Y <= Menu.AbsolutePosition.Y + Menu.AbsoluteSize.Y) then
-                            Menu.Visible = false; outsideConn:Disconnect(); outsideConn=nil
-                        end
-                    end
-                end)
-            end
-            return
-        end
-
-        Menu = Instance.new("Frame")
-        local _stick = attachStickyFollow(Menu, Box, Screen); _stick.Update()
-        Menu.BackgroundColor3 = Acinonyx._theme.Bg
-        Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, math.clamp(#list*30, 36, 220))
-        Menu.Position = UDim2.new(0, Box.AbsolutePosition.X, 0, Box.AbsolutePosition.Y + Box.AbsoluteSize.Y + 4)
-        Menu.Parent = Screen -- parent to top layer
-        Menu.ZIndex = 500
-        roundify(Menu); stroke(Menu, Acinonyx._theme.Navy); padding(Menu, 4)
-
-        local L = Instance.new("UIListLayout"); L.Parent = Menu; L.SortOrder=Enum.SortOrder.LayoutOrder; L.Padding=UDim.new(0,4)
-        for _, opt in ipairs(list) do
-            local key = tostring(opt)
-            local row = Instance.new("TextButton")
-            row.BackgroundColor3 = selectedSet[key] and Acinonyx._theme.Navy or Acinonyx._theme.Bg2
-            row.Text = key
-            row.TextColor3 = Acinonyx._theme.Text
-            row.TextSize = Acinonyx._theme.TextSize
-            row.Font = Acinonyx._theme.Font
-            row.Size = UDim2.new(1, 0, 0, 24)
-            row.Parent = Menu
-            row.ZIndex = 501
-            roundify(row); stroke(row, Acinonyx._theme.Navy)
-            row.MouseEnter:Connect(function() if not selectedSet[key] then tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.NavySoft}) end end)
-            row.MouseLeave:Connect(function() if not selectedSet[key] then tween(row, 0.08, {BackgroundColor3 = Acinonyx._theme.Bg2}) end end)
-            row.MouseButton1Click:Connect(function()
-                selectedSet[key] = not selectedSet[key]
-                tween(row, 0.08, {BackgroundColor3 = selectedSet[key] and Acinonyx._theme.Navy or Acinonyx._theme.Bg2})
-                updateBoxText(); fire()
-            end)
-        end
-
-        outsideConn = UserInputService.InputBegan:Connect(function(input,gpe)
-            if gpe then return end
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                local pos = input.Position
-                if not (pos.X >= Menu.AbsolutePosition.X and pos.X <= Menu.AbsolutePosition.X + Menu.AbsoluteSize.X
-                    and pos.Y >= Menu.AbsolutePosition.Y and pos.Y <= Menu.AbsolutePosition.Y + Menu.AbsoluteSize.Y) then
+                        if (not (pos.X >= Menu.AbsolutePosition.X and pos.X <= Menu.AbsolutePosition.X + Menu.AbsoluteSize.X
+        and pos.Y >= Menu.AbsolutePosition.Y and pos.Y <= Menu.AbsolutePosition.Y + Menu.AbsoluteSize.Y))
+        and (not (pos.X >= Box.AbsolutePosition.X and pos.X <= Box.AbsolutePosition.X + Box.AbsoluteSize.X
+        and pos.Y >= Box.AbsolutePosition.Y and pos.Y <= Box.AbsolutePosition.Y + Box.AbsoluteSize.Y)) then
                     Menu.Visible = false; outsideConn:Disconnect(); outsideConn=nil
                 end
             end
