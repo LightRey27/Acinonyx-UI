@@ -1,100 +1,82 @@
 
 --[[
-  Orion‑like UI Library — v2 (Luau, single‑file)
-  Author: ChatGPT (for Rey)
+  ACX-UI • Orion-like Library (Final merged)
+  Features:
+    • Acrylic (transparent + blur) with options
+    • Window centered on screen
+    • Notifications stacked bottom-right
+    • Minimize system + draggable overlay (left-center)
+    • Profile Card docked at bottom of tab list
+    • Thin shadow outline (50%) + thin border stroke
+    • Tabs, Sections, Elements: Label, Paragraph, Button, Toggle, Slider, Dropdown, MultiDropdown, Textbox, Keybind
+    • Lightweight Config Save/Load + Theme patch + ApplyTheme()
 
-  Changelog v2
-  • Minimize system + floating overlay (draggable). Overlay shows title + quick actions to Restore/Hide.
-  • Global Minimize Keybind (default RightControl). Per‑window override via options.
-  • Lightweight Save/Load config (auto‑detect writefile/readfile; graceful fallback).
-  • Theme manager patching + Window:ApplyTheme().
-  • Small API polish & docs.
-
-  ===== Usage (quick) =====
-  local Orion = loadstring(game:HttpGet("https://your.cdn/orion_like_v2.lua"))()
-
-  -- (Optional) bind config (auto uses writefile/readfile if available)
-  Orion:BindConfig({ Folder = "AcinoUI", File = "demo.json" })
-
-  local Window = Orion:MakeWindow({
-      Name = "Acinonyx • Orion‑like v2",
-      IntroText = "Welcome, Rey!",
-      MinimizeKeybind = Enum.KeyCode.RightControl, -- optional, default RightControl
-
-      -- Acrylic options (new)
+  Usage:
+    local Orion = loadstring(game:HttpGet("https://raw.githubusercontent.com/LightRey27/Acnx-UI/main/ACX-UI.lua"))()
+    Orion:BindConfig({ Folder = "AcnxUI", File = "tester.json" })
+    local win = Orion:MakeWindow({
+      Name = "ACX-UI",
+      IntroText = "Ready",
       Acrylic = true,
-      AcrylicTransparency = 0.25, -- 0..1 (0=solid, 1=invisible). 0.25 recommended.
-      AcrylicBlur = 12,          -- Lighting.BlurEffect.Size
-  })
-
-  local Tab = Window:MakeTab({ Name = "Main" })
-  local Sec = Tab:AddSection({ Name = "Controls" })
-
-  Sec:AddButton({ Name = "Save", Callback = function() Orion:SaveConfig() end })
-  Sec:AddButton({ Name = "Load", Callback = function() Orion:LoadConfig() end })
-
-  -- Toggle minimize programmatically
-  -- Window:SetMinimized(true)  -- hide to overlay
-  -- Window:SetMinimized(false) -- restore
-
-  ===== Notes =====
-  • Config saves element values you set via the returned element APIs (Toggle:Get(), Slider:Get(), Textbox:Get(), Dropdown:Get()).
-  • You can attach your own mapper to persist custom keys via Orion.Config:Set(key, value) and Orion.Config:Get(key).
+      AcrylicTransparency = 0.25,
+      AcrylicBlur = 12,
+      Center = true,           -- center window (default true)
+      ShowProfileCard = true,  -- show profile card (default true)
+      MinimizeKeybind = Enum.KeyCode.RightControl,
+    })
 ]]
 
 local Orion = {}
-Orion._version = "2.0.0"
-Orion._instances = {}
-Orion._signals = {}
-Orion._windows = {}
+Orion._version = "2.2.0"
+Orion._instances, Orion._signals, Orion._windows = {}, {}, {}
 
 -- ===== Theme =====
 Orion._theme = {
     Font = Enum.Font.Gotham,
     TitleSize = 18,
-    TextSize = 14,
-    Round = 10,
-    Padding = 8,
-    -- Core palette (biru dongker / navy)
-    Navy = Color3.fromRGB(12, 36, 78), -- biru dongker untuk outline/line/selected
+    TextSize  = 14,
+    Round     = 10,
+    Padding   = 8,
+    -- Palette (navy / biru dongker)
+    Navy     = Color3.fromRGB(12, 36, 78),
     NavySoft = Color3.fromRGB(18, 48, 96),
-    Bg = Color3.fromRGB(16, 17, 20),
-    Bg2 = Color3.fromRGB(22, 24, 28),
-    Accent = Color3.fromRGB(12, 36, 78), -- gunakan biru dongker sebagai accent
-    Accent2 = Color3.fromRGB(18, 48, 96),
-    Text = Color3.fromRGB(235, 239, 245),
-    Subtext = Color3.fromRGB(180, 187, 196),
-    Stroke = Color3.fromRGB(12, 36, 78), -- outline biru dongker
-    Hover = Color3.fromRGB(30, 34, 40),
-    ShadowImageId = "rbxassetid://5028857472", -- soft drop shadow sprite
+    Bg       = Color3.fromRGB(16, 17, 20),
+    Bg2      = Color3.fromRGB(22, 24, 28),
+    Accent   = Color3.fromRGB(12, 36, 78),
+    Accent2  = Color3.fromRGB(18, 48, 96),
+    Text     = Color3.fromRGB(235, 239, 245),
+    Subtext  = Color3.fromRGB(180, 187, 196),
+    Stroke   = Color3.fromRGB(12, 36, 78),
+    Hover    = Color3.fromRGB(30, 34, 40),
+    ShadowImageId = "rbxassetid://5028857472",
 }
 
 -- ===== Services =====
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
-local Lighting = game:GetService("Lighting") -- (NEW) for acrylic blur
-local LocalPlayer = Players.LocalPlayer
+local Players         = game:GetService("Players")
+local RunService      = game:GetService("RunService")
+local TweenService    = game:GetService("TweenService")
+local UserInputService= game:GetService("UserInputService")
+local HttpService     = game:GetService("HttpService")
+local Lighting        = game:GetService("Lighting")
+local LocalPlayer     = Players.LocalPlayer
 
--- ===== Util =====
+-- ===== Utils =====
 local function tween(o, t, p)
     local tw = TweenService:Create(o, TweenInfo.new(t, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), p)
     tw:Play(); return tw
 end
 
 local function roundify(inst, r)
-    local uic = Instance.new("UICorner")
-    uic.CornerRadius = UDim.new(0, r or Orion._theme.Round)
-    uic.Parent = inst
-    return uic
+    local u = Instance.new("UICorner")
+    u.CornerRadius = UDim.new(0, r or Orion._theme.Round)
+    u.Parent = inst
+    return u
 end
 
 local function stroke(inst, c)
     local s = Instance.new("UIStroke")
     s.Color = c or Orion._theme.Stroke
-    s.Thickness = 1
+    s.Thickness = 0.5  -- thinner border
     s.Transparency = 0
     s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     s.Parent = inst
@@ -103,10 +85,10 @@ end
 
 local function padding(inst, p)
     local pad = Instance.new("UIPadding")
-    pad.PaddingTop = UDim.new(0, p)
+    pad.PaddingTop    = UDim.new(0, p)
     pad.PaddingBottom = UDim.new(0, p)
-    pad.PaddingLeft = UDim.new(0, p)
-    pad.PaddingRight = UDim.new(0, p)
+    pad.PaddingLeft   = UDim.new(0, p)
+    pad.PaddingRight  = UDim.new(0, p)
     pad.Parent = inst
     return pad
 end
@@ -163,10 +145,10 @@ local function dropShadow(parent, radius)
     shadow.Image = Orion._theme.ShadowImageId
     shadow.ScaleType = Enum.ScaleType.Slice
     shadow.SliceCenter = Rect.new(10,10,118,118)
-    shadow.ImageColor3 = Orion._theme.Navy -- tint biru dongker
-    shadow.ImageTransparency = 0.7
-    shadow.Size = UDim2.new(1, 24, 1, 24)
-    shadow.Position = UDim2.new(0, -12, 0, -12)
+    shadow.ImageColor3 = Orion._theme.Navy
+    shadow.ImageTransparency = 0.75 -- thinner look
+    shadow.Size = UDim2.new(1, 12, 1, 12)     -- half of 24
+    shadow.Position = UDim2.new(0, -6, 0, -6) -- half of -12
     shadow.ZIndex = 0
     shadow.Parent = parent
     if radius then
@@ -175,15 +157,15 @@ local function dropShadow(parent, radius)
     return shadow
 end
 
--- ===== Root Screen =====
+-- ===== Screen =====
 local Screen = Instance.new("ScreenGui")
-Screen.Name = "OrionLikeV2"
+Screen.Name = "ACX_UI"
 Screen.IgnoreGuiInset = true
 Screen.ResetOnSpawn = false
 Screen.ZIndexBehavior = Enum.ZIndexBehavior.Global
 Screen.Parent = (RunService:IsStudio() and LocalPlayer:FindFirstChildOfClass("PlayerGui")) or LocalPlayer.PlayerGui
 
--- ===== Acrylic (global blur) helper =====
+-- ===== Acrylic helpers =====
 local function getOrCreateBlur()
     local b = Lighting:FindFirstChild("ACX_UI_Blur")
     if not b then
@@ -203,11 +185,10 @@ function Orion:_updateAcrylic()
             anyVisible = true; break
         end
     end
-    local blur = getOrCreateBlur()
-    blur.Enabled = anyVisible
+    getOrCreateBlur().Enabled = anyVisible
 end
 
--- ===== Notifications layer (bottom-right) =====
+-- ===== Notifications (bottom-right) =====
 local NotifyLayer = Instance.new("Frame")
 NotifyLayer.BackgroundTransparency = 1
 NotifyLayer.Size = UDim2.new(1, -20, 1, -20)
@@ -257,18 +238,17 @@ function Orion:MakeNotification(opts)
     end)
 end
 
--- ===== Config (lightweight) =====
+-- ===== Config =====
 Orion.Config = { _data = {}, Folder = "", File = "" }
 
 local function fileops()
-    local ok = (typeof(writefile) == "function") and (typeof(readfile) == "function") and (typeof(isfile) == "function")
-    return ok
+    return (typeof(writefile) == "function") and (typeof(readfile) == "function") and (typeof(isfile) == "function")
 end
 
 function Orion:BindConfig(opts)
     opts = opts or {}
-    self.Config.Folder = tostring(opts.Folder or "OrionLike")
-    self.Config.File = tostring(opts.File or "config.json")
+    self.Config.Folder = tostring(opts.Folder or "ACX_UI")
+    self.Config.File   = tostring(opts.File or "config.json")
     self:MakeNotification({Name="Config", Content = "Bound to "..self.Config.Folder.."/"..self.Config.File, Time=2})
 end
 
@@ -276,9 +256,7 @@ function Orion.Config:Set(k,v) Orion.Config._data[k] = v end
 function Orion.Config:Get(k,def) local v = Orion.Config._data[k]; if v==nil then return def end; return v end
 
 function Orion:SaveConfig()
-    if not fileops() then
-        self:MakeNotification({Name="Save", Content="writefile/readfile not available.", Time=2}); return false
-    end
+    if not fileops() then self:MakeNotification({Name="Save", Content="writefile/readfile not available.", Time=2}); return false end
     local folder = self.Config.Folder; local file = self.Config.File
     pcall(function() if not isfolder(folder) then makefolder(folder) end end)
     local json = HttpService:JSONEncode(self.Config._data)
@@ -288,34 +266,31 @@ function Orion:SaveConfig()
 end
 
 function Orion:LoadConfig()
-    if not fileops() then
-        self:MakeNotification({Name="Load", Content="readfile not available.", Time=2}); return false
-    end
+    if not fileops() then self:MakeNotification({Name="Load", Content="readfile not available.", Time=2}); return false end
     local path = string.format("%s/%s", self.Config.Folder, self.Config.File)
     if not isfile(path) then self:MakeNotification({Name="Load", Content="No config found.", Time=2}); return false end
-    local ok, data = pcall(function()
-        return HttpService:JSONDecode(readfile(path))
-    end)
+    local ok, data = pcall(function() return HttpService:JSONDecode(readfile(path)) end)
     if ok and typeof(data)=="table" then
         self.Config._data = data
         self:MakeNotification({Name="Load", Content="Config loaded.", Time=2})
         return true
     else
-        self:MakeNotification({Name="Load", Content="Failed to decode config.", Time=2}); return false
+        self:MakeNotification({Name="Load", Content="Failed to decode config.", Time=2})
+        return false
     end
 end
 
 -- ===== Theme API =====
 function Orion:SetTheme(patch)
-    for k,v in pairs(patch or {}) do if self._theme[k] ~= nil then self._theme[k] = v end end
+    for k,v in pairs(patch or {}) do
+        if self._theme[k] ~= nil then self._theme[k] = v end
+    end
 end
 
--- ===== Window API =====
-local WindowMT = {}; WindowMT.__index = WindowMT
-local TabMT = {}; TabMT.__index = TabMT
-local SectionMT = {}; SectionMT.__index = SectionMT
+-- ===== Window / Tab / Section Metatables =====
+local WindowMT, TabMT, SectionMT = {}, {}, {}
+WindowMT.__index = WindowMT; TabMT.__index = TabMT; SectionMT.__index = SectionMT
 
--- helpers
 local function makeItemBase(parent, height)
     local Item = Instance.new("Frame")
     Item.BackgroundColor3 = Orion._theme.Bg2
@@ -325,26 +300,32 @@ local function makeItemBase(parent, height)
     return Item
 end
 
+-- ===== MakeWindow =====
 function Orion:MakeWindow(opts)
     opts = opts or {}
-    local windowTitle = tostring(opts.Name or "Orion‑like Window")
-    local introText = opts.IntroText
-    local minimizeKey = opts.MinimizeKeybind or Enum.KeyCode.RightControl
-
-    -- Acrylic options
-    local acrylicOn        = (opts.Acrylic ~= false)
-    local acrylicAlpha     = tonumber(opts.AcrylicTransparency or 0.25)  -- 0..1
-    local acrylicBlurSize  = tonumber(opts.AcrylicBlur or 12)
+    local windowTitle   = tostring(opts.Name or "ACX-UI Window")
+    local introText     = opts.IntroText
+    local minimizeKey   = opts.MinimizeKeybind or Enum.KeyCode.RightControl
+    local acrylicOn     = (opts.Acrylic ~= false)
+    local acrylicAlpha  = tonumber(opts.AcrylicTransparency or 0.25) -- 0..1
+    local acrylicBlurSz = tonumber(opts.AcrylicBlur or 12)
+    local centerOnScreen= (opts.Center ~= false)       -- default true
+    local showProfile   = (opts.ShowProfileCard ~= false) -- default true
 
     if introText then
         Orion:MakeNotification({ Name = windowTitle, Content = introText, Time = 2.5 })
     end
 
-    -- Root frame
+    -- Root
     local Root = Instance.new("Frame")
     Root.BackgroundColor3 = Orion._theme.Bg
     Root.Size = UDim2.new(0, 600, 0, 400)
-    Root.Position = UDim2.new(0, 60, 0, 60)
+    if centerOnScreen then
+        Root.AnchorPoint = Vector2.new(0.5, 0.5)
+        Root.Position    = UDim2.new(0.5, 0, 0.5, 0)
+    else
+        Root.Position    = UDim2.new(0, 60, 0, 60)
+    end
     Root.Active = true
     Root.Parent = Screen
     roundify(Root); stroke(Root); dropShadow(Root, Orion._theme.Round)
@@ -387,28 +368,35 @@ function Orion:MakeWindow(opts)
     LeftPane.BackgroundColor3 = Orion._theme.Bg2
     LeftPane.Size = UDim2.new(0, 170, 1, 0)
     LeftPane.Parent = Body
-    roundify(LeftPane); stroke(LeftPane); padding(LeftPane, 8);
+    roundify(LeftPane); stroke(LeftPane); padding(LeftPane, 8)
 
     local TabList = Instance.new("UIListLayout")
     TabList.Parent = LeftPane
     TabList.SortOrder = Enum.SortOrder.LayoutOrder
     TabList.Padding = UDim.new(0, 6)
 
+    -- Reserve bottom space for Profile Card
+    local Spacer = Instance.new("Frame")
+    Spacer.BackgroundTransparency = 1
+    Spacer.Size = UDim2.new(1, 0, 0, 80)
+    Spacer.Name = "_BottomSpacer"
+    Spacer.Parent = LeftPane
+
     local RightPane = Instance.new("Frame")
     RightPane.BackgroundColor3 = Orion._theme.Bg2
     RightPane.Size = UDim2.new(1, -180, 1, 0)
     RightPane.Position = UDim2.new(0, 180, 0, 0)
     RightPane.Parent = Body
-    roundify(RightPane); stroke(RightPane); padding(RightPane, 10);
+    roundify(RightPane); stroke(RightPane); padding(RightPane, 10)
 
-    -- Apply acrylic transparency (glass-look)
+    -- Acrylic
     if acrylicOn then
         Root.BackgroundTransparency     = acrylicAlpha
         Header.BackgroundTransparency   = acrylicAlpha
         LeftPane.BackgroundTransparency = acrylicAlpha
         RightPane.BackgroundTransparency= acrylicAlpha
         local blur = getOrCreateBlur()
-        blur.Size = acrylicBlurSize
+        blur.Size = acrylicBlurSz
         blur.Enabled = true
         Orion:_updateAcrylic()
     end
@@ -416,7 +404,7 @@ function Orion:MakeWindow(opts)
     local Pages = Instance.new("Folder")
     Pages.Name = "Pages"; Pages.Parent = RightPane
 
-    -- Floating Overlay (when minimized) — left center
+    -- Overlay (left-center)
     local Overlay = Instance.new("Frame")
     Overlay.Visible = false
     Overlay.BackgroundColor3 = Orion._theme.Bg2
@@ -430,7 +418,10 @@ function Orion:MakeWindow(opts)
     OvTitle.Size = UDim2.new(1, -90, 1, 0)
 
     local BtnRestore = Instance.new("TextButton")
-    BtnRestore.Text = "Restore"; BtnRestore.Font = Orion._theme.Font; BtnRestore.TextColor3 = Orion._theme.Text; BtnRestore.TextSize = Orion._theme.TextSize
+    BtnRestore.Text = "Restore"
+    BtnRestore.Font = Orion._theme.Font
+    BtnRestore.TextColor3 = Orion._theme.Text
+    BtnRestore.TextSize = Orion._theme.TextSize
     BtnRestore.Size = UDim2.new(0, 80, 0, 28)
     BtnRestore.Position = UDim2.new(1, -84, 0.5, -14)
     BtnRestore.BackgroundColor3 = Orion._theme.Bg
@@ -453,40 +444,73 @@ function Orion:MakeWindow(opts)
     end)
     BtnMin.MouseButton1Click:Connect(function() setMinimized(true) end)
     BtnRestore.MouseButton1Click:Connect(function() setMinimized(false) end)
-
-    -- Global keybind for this window
-    local keyConn
-    keyConn = UserInputService.InputBegan:Connect(function(input, gpe)
+    UserInputService.InputBegan:Connect(function(input, gpe)
         if gpe then return end
         if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == minimizeKey then
             setMinimized(not minimized)
         end
     end)
 
+    -- Profile Card (bottom of LeftPane)
+    local profileApi = nil
+    if showProfile then
+        local Card = Instance.new("Frame")
+        Card.Name = "ProfileCard"
+        Card.BackgroundColor3 = Orion._theme.Bg
+        Card.Size = UDim2.new(1, -16, 0, 72)
+        Card.Position = UDim2.new(0, 8, 1, -80)
+        Card.AnchorPoint = Vector2.new(0,1)
+        Card.Parent = LeftPane
+        roundify(Card, 12); stroke(Card)
+
+        local Avatar = Instance.new("ImageLabel")
+        Avatar.BackgroundTransparency = 1
+        Avatar.Size = UDim2.new(0, 44, 0, 44)
+        Avatar.Position = UDim2.new(0, 10, 0, 14)
+        Avatar.Parent = Card
+        roundify(Avatar, 999)
+        local ok, content = pcall(function()
+            return Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+        end)
+        if ok then Avatar.Image = content end
+
+        local Name = createText(Card, LocalPlayer.DisplayName or LocalPlayer.Name, 15, true)
+        Name.Position = UDim2.new(0, 60, 0, 14); Name.Size = UDim2.new(1, -70, 0, 18)
+
+        local Sub = createText(Card, "@"..LocalPlayer.Name, 13, false, Orion._theme.Subtext)
+        Sub.Position = UDim2.new(0, 60, 0, 34); Sub.Size = UDim2.new(1, -70, 0, 16)
+
+        profileApi = {
+            SetName   = function(_, t) Name.Text    = tostring(t) end,
+            SetSub    = function(_, t) Sub.Text     = tostring(t) end,
+            SetAvatar = function(_, id) Avatar.Image= tostring(id) end,
+        }
+    end
+
     local api = setmetatable({
         _root = Root, _tabs = {}, _pages = Pages, _left = LeftPane,
-        _overlay = Overlay, _ovTitle = OvTitle,
-        _minKey = minimizeKey,
+        _overlay = Overlay, _ovTitle = OvTitle, _minKey = minimizeKey,
+        _profile = profileApi,
         SetMinimized = function(self2, v) setMinimized(not not v) end,
         SetMinimizeKeybind = function(self2, key) self2._minKey = key end,
         ApplyTheme = function(self2)
-            -- repaint for static nodes
-            Root.BackgroundColor3 = Orion._theme.Bg
-            Header.BackgroundColor3 = Orion._theme.Bg2
-            LeftPane.BackgroundColor3 = Orion._theme.Bg2
-            RightPane.BackgroundColor3 = Orion._theme.Bg2
+            Root.BackgroundColor3    = Orion._theme.Bg
+            Header.BackgroundColor3  = Orion._theme.Bg2
+            LeftPane.BackgroundColor3= Orion._theme.Bg2
+            RightPane.BackgroundColor3= Orion._theme.Bg2
             Overlay.BackgroundColor3 = Orion._theme.Bg2
         end,
         SetOverlayTitle = function(self2, txt) OvTitle.Text = tostring(txt) end,
+        Profile = function(self2) return self2._profile end,
     }, WindowMT)
 
     table.insert(self._windows, api)
     return api
 end
 
--- Tabs / Sections / Elements
+-- ===== Tabs / Sections =====
 function WindowMT:MakeTab(opts)
-    opts = opts or {};
+    opts = opts or {}
     local name = tostring(opts.Name or "Tab")
 
     local TabButton = Instance.new("TextButton")
@@ -497,8 +521,7 @@ function WindowMT:MakeTab(opts)
     TabButton.TextSize = Orion._theme.TextSize
     TabButton.Font = Orion._theme.Font
     TabButton.Parent = self._left
-    roundify(TabButton); stroke(TabButton)
-    buttonHover(TabButton)
+    roundify(TabButton); stroke(TabButton); buttonHover(TabButton)
 
     local Page = Instance.new("ScrollingFrame")
     Page.Active = true
@@ -568,7 +591,7 @@ function TabMT:AddSection(opts)
     return api
 end
 
--- Elements
+-- ===== Elements =====
 function SectionMT:AddLabel(opts)
     opts = opts or {}
     local text = tostring(opts.Text or "Label")
@@ -594,7 +617,10 @@ function SectionMT:AddParagraph(opts)
     C.TextWrapped = true
     C.AutomaticSize = Enum.AutomaticSize.Y
 
-    return { Set = function(_, newTitle, newContent) if newTitle then T.Text = tostring(newTitle) end; if newContent then C.Text = tostring(newContent) end end }
+    return { Set = function(_, newTitle, newContent)
+        if newTitle then T.Text = tostring(newTitle) end
+        if newContent then C.Text = tostring(newContent) end
+    end }
 end
 
 function SectionMT:AddButton(opts)
@@ -633,7 +659,8 @@ function SectionMT:AddToggle(opts)
     Btn.Size = UDim2.new(0, 42, 0, 22)
     Btn.Position = UDim2.new(1, -48, 0.5, -11)
     Btn.BackgroundColor3 = Orion._theme.Bg
-    Btn.Text = ""; Btn.Parent = Item
+    Btn.Text = ""
+    Btn.Parent = Item
     roundify(Btn, 999); stroke(Btn)
 
     local Dot = Instance.new("Frame")
@@ -696,7 +723,7 @@ function SectionMT:AddSlider(opts)
 
     local function setValue(v, silent)
         v = math.clamp(v, min, max)
-        if inc > 0 then v = math.round(v/inc)*inc end
+        if inc > 0 then v = math.round(v / inc) * inc end
         value = v
         L.Text = ("%s: %s"):format(name, v)
         local alpha = (v - min) / (max - min)
@@ -795,6 +822,98 @@ function SectionMT:AddDropdown(opts)
     }
 end
 
+function SectionMT:AddMultiDropdown(opts)
+    opts = opts or {}
+    local name  = tostring(opts.Name or "Multi Dropdown")
+    local list  = opts.Options or {}
+    local defs  = opts.Default or {}
+    local cb    = opts.Callback or function(_) end
+
+    local selectedSet = {}
+    if typeof(defs) == "table" then
+        for _, v in ipairs(defs) do selectedSet[tostring(v)] = true end
+    end
+
+    local Item  = makeItemBase(self._holder, 40)
+    local Label = createText(Item, name); Label.Size = UDim2.new(1, -200, 1, 0)
+
+    local Box = Instance.new("TextButton")
+    Box.Size = UDim2.new(0, 180, 0, 26)
+    Box.Position = UDim2.new(1, -186, 0.5, -13)
+    Box.BackgroundColor3 = Orion._theme.Bg
+    Box.Text = "Select multiple"
+    Box.Font = Orion._theme.Font
+    Box.TextSize = Orion._theme.TextSize
+    Box.TextColor3 = Orion._theme.Text
+    Box.Parent = Item
+    roundify(Box); stroke(Box, Orion._theme.Navy)
+
+    local function selectedList()
+        local t = {}
+        for _, opt in ipairs(list) do if selectedSet[tostring(opt)] then table.insert(t, opt) end end
+        return t
+    end
+
+    local function updateBoxText()
+        local t = selectedList()
+        if #t == 0 then Box.Text = "Select multiple"
+        elseif #t <= 3 then Box.Text = table.concat(t, ", ")
+        else Box.Text = tostring(#t).." selected" end
+    end
+
+    local Menu
+    local function fire() task.spawn(cb, selectedList()) end
+
+    Box.MouseButton1Click:Connect(function()
+        if Menu then Menu.Visible = not Menu.Visible; return end
+        Menu = Instance.new("Frame")
+        Menu.BackgroundColor3 = Orion._theme.Bg
+        Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, math.clamp(#list*30, 36, 220))
+        Menu.Position = UDim2.new(0, Box.AbsolutePosition.X - Item.AbsolutePosition.X, 0, Box.AbsolutePosition.Y - Item.AbsolutePosition.Y + Box.AbsoluteSize.Y + 4)
+        Menu.Parent = Item
+        roundify(Menu); stroke(Menu, Orion._theme.Navy); padding(Menu, 4)
+
+        local L = Instance.new("UIListLayout"); L.Parent = Menu; L.SortOrder = Enum.SortOrder.LayoutOrder; L.Padding = UDim.new(0, 4)
+        for _, opt in ipairs(list) do
+            local key = tostring(opt)
+            local row = Instance.new("TextButton")
+            row.BackgroundColor3 = selectedSet[key] and Orion._theme.Navy or Orion._theme.Bg2
+            row.Text = key
+            row.TextColor3 = Orion._theme.Text
+            row.TextSize = Orion._theme.TextSize
+            row.Font = Orion._theme.Font
+            row.Size = UDim2.new(1, 0, 0, 24)
+            row.Parent = Menu
+            roundify(row); stroke(row, Orion._theme.Navy)
+            row.MouseEnter:Connect(function() if not selectedSet[key] then tween(row, 0.08, {BackgroundColor3 = Orion._theme.NavySoft}) end end)
+            row.MouseLeave:Connect(function() if not selectedSet[key] then tween(row, 0.08, {BackgroundColor3 = Orion._theme.Bg2}) end end)
+            row.MouseButton1Click:Connect(function()
+                selectedSet[key] = not selectedSet[key]
+                tween(row, 0.08, {BackgroundColor3 = selectedSet[key] and Orion._theme.Navy or Orion._theme.Bg2})
+                updateBoxText(); fire()
+            end)
+        end
+    end)
+
+    updateBoxText(); fire()
+
+    return {
+        Get = function() return selectedList() end,
+        IsSelected = function(_, v) return not not selectedSet[tostring(v)] end,
+        SetSelected = function(_, v, on) selectedSet[tostring(v)] = not not on; updateBoxText(); fire() end,
+        Clear = function() selectedSet = {}; updateBoxText(); fire() end,
+        Refresh = function(_, newList, newDefaults)
+            list = newList or list
+            selectedSet = {}
+            if typeof(newDefaults) == "table" then
+                for _, v in ipairs(newDefaults) do selectedSet[tostring(v)] = true end
+            end
+            if Menu then Menu:Destroy(); Menu = nil end
+            updateBoxText(); fire()
+        end
+    }
+end
+
 function SectionMT:AddTextbox(opts)
     opts = opts or {}
     local name = tostring(opts.Name or "Textbox")
@@ -866,118 +985,5 @@ function SectionMT:AddKeybind(opts)
 end
 
 function Orion:Destroy() if Screen then Screen:Destroy() end end
-
--- === Multi-Select Dropdown ===
-function SectionMT:AddMultiDropdown(opts)
-    opts = opts or {}
-    local name = tostring(opts.Name or "Multi Dropdown")
-    local list = opts.Options or {}
-    local defaults = opts.Default or {}
-    local cb = opts.Callback or function(_) end -- callback(table selected)
-
-    -- normalize defaults into set
-    local selectedSet = {}
-    if typeof(defaults) == "table" then
-        for _, v in ipairs(defaults) do selectedSet[tostring(v)] = true end
-    end
-
-    local Item = makeItemBase(self._holder, 40)
-    local Label = createText(Item, name)
-    Label.Size = UDim2.new(1, -200, 1, 0)
-
-    local Box = Instance.new("TextButton")
-    Box.Size = UDim2.new(0, 180, 0, 26)
-    Box.Position = UDim2.new(1, -186, 0.5, -13)
-    Box.BackgroundColor3 = Orion._theme.Bg
-    Box.Text = "Select multiple"
-    Box.Font = Orion._theme.Font
-    Box.TextSize = Orion._theme.TextSize
-    Box.TextColor3 = Orion._theme.Text
-    Box.Parent = Item
-    roundify(Box); stroke(Box, Orion._theme.Navy)
-
-    local function selectedList()
-        local t = {}
-        for _, opt in ipairs(list) do if selectedSet[tostring(opt)] then table.insert(t, opt) end end
-        return t
-    end
-
-    local function updateBoxText()
-        local t = selectedList()
-        if #t == 0 then Box.Text = "Select multiple" elseif #t <= 3 then
-            Box.Text = table.concat(t, ", ")
-        else
-            Box.Text = tostring(#t).." selected"
-        end
-    end
-
-    local Menu
-    local function fire()
-        task.spawn(cb, selectedList())
-    end
-
-    Box.MouseButton1Click:Connect(function()
-        if Menu then Menu.Visible = not Menu.Visible; return end
-        Menu = Instance.new("Frame")
-        Menu.BackgroundColor3 = Orion._theme.Bg
-        Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, math.clamp(#list*30, 36, 220))
-        Menu.Position = UDim2.new(0, Box.AbsolutePosition.X - Item.AbsolutePosition.X, 0, Box.AbsolutePosition.Y - Item.AbsolutePosition.Y + Box.AbsoluteSize.Y + 4)
-        Menu.Parent = Item
-        roundify(Menu); stroke(Menu, Orion._theme.Navy); padding(Menu, 4)
-
-        local L = Instance.new("UIListLayout"); L.Parent = Menu; L.SortOrder = Enum.SortOrder.LayoutOrder; L.Padding = UDim.new(0, 4)
-
-        for _, opt in ipairs(list) do
-            local key = tostring(opt)
-            local row = Instance.new("TextButton")
-            row.BackgroundColor3 = selectedSet[key] and Orion._theme.Navy or Orion._theme.Bg2
-            row.Text = key
-            row.TextColor3 = Orion._theme.Text
-            row.TextSize = Orion._theme.TextSize
-            row.Font = Orion._theme.Font
-            row.Size = UDim2.new(1, 0, 0, 24)
-            row.Parent = Menu
-            roundify(row); stroke(row, Orion._theme.Navy)
-            row.MouseEnter:Connect(function()
-                if not selectedSet[key] then tween(row, 0.08, {BackgroundColor3 = Orion._theme.NavySoft}) end
-            end)
-            row.MouseLeave:Connect(function()
-                if not selectedSet[key] then tween(row, 0.08, {BackgroundColor3 = Orion._theme.Bg2}) end
-            end)
-            row.MouseButton1Click:Connect(function()
-                selectedSet[key] = not selectedSet[key]
-                tween(row, 0.08, {BackgroundColor3 = selectedSet[key] and Orion._theme.Navy or Orion._theme.Bg2})
-                updateBoxText(); fire()
-            end)
-        end
-    end)
-
-    updateBoxText(); fire()
-
-    return {
-        Get = function()
-            return selectedList()
-        end,
-        IsSelected = function(_, v)
-            return not not selectedSet[tostring(v)]
-        end,
-        SetSelected = function(_, v, on)
-            selectedSet[tostring(v)] = not not on
-            updateBoxText(); fire()
-        end,
-        Clear = function()
-            selectedSet = {}; updateBoxText(); fire()
-        end,
-        Refresh = function(_, newList, newDefaults)
-            list = newList or list
-            selectedSet = {}
-            if typeof(newDefaults) == "table" then
-                for _, v in ipairs(newDefaults) do selectedSet[tostring(v)] = true end
-            end
-            if Menu then Menu:Destroy(); Menu = nil end
-            updateBoxText(); fire()
-        end
-    }
-end
 
 return Orion
