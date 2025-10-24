@@ -1,42 +1,12 @@
 --[[
-  Acinonyx UI Library (Fluent-style rebuild)
-  Author: you + ChatGPT
-  Philosophy:
-    • Visuals meniru tampilanmu sekarang (acrylic, rounded, shadow tipis, profile card bawah kiri, overlay minimize kiri-tengah, notif kanan-bawah)
-    • Arsitektur mengikuti Fluent/Linoria: ScreenGui global (ZIndexBehavior.Global), PopupRoot untuk semua pop-up (dropdown, tooltip), event registry, cleanup rapi.
-
-  Public API (ringkas):
-    local ui = Acinonyx:MakeWindow({
-      Name = "Acinonyx • Tester",
-      Acrylic = true, AcrylicTransparency = 0.25, AcrylicBlur = 12,
-      Center = true,
-      ShowProfileCard = true, ProfileCardPosition = "bottom", -- top|center|bottom
-      MinimizeKeybind = Enum.KeyCode.RightControl,
-    })
-
-    local tab = ui:MakeTab({Name = "Main"})
-    local sec = tab:AddSection({Name = "Pengaturan"})
-
-    -- Elements
-    sec:AddLabel({Text = "Halo"})
-    sec:AddParagraph({Title = "WalkSpeed: 26", Content = "Ubah kecepatan jalan."})
-    sec:AddButton({Name="Show Notif", Callback=function() Acinonyx:MakeNotification({Name="Tes", Content="Halo dunia"}) end})
-    local toggle = sec:AddToggle({Name="God Mode", Default=false, Callback=function(v) print("god:", v) end})
-    local slider = sec:AddSlider({Name="WalkSpeed", Min=0, Max=200, Default=26, Increment=1, Callback=function(v) print("ws:", v) end})
-    local drop   = sec:AddDropdown({Name="Senjata", Options={"Sword","Bow","Spear"}, Default="Sword", Callback=function(v) print("senjata:", v) end})
-    local mdrop  = sec:AddMultiDropdown({Name="Buff", Options={"Strength","Speed","Shield","Luck"}, Default={"Strength","Luck"}, Callback=function(t) print("buff:", table.concat(t, ", ")) end})
-    local tb     = sec:AddTextbox({Name="Ketik sesuatu", Default="halo dunia", PlaceholderText="tulis...", Callback=function(t) print("text:", t) end})
-    local kb     = sec:AddKeybind({Name="Minimize/Restore", Default=Enum.KeyCode.RightControl, Callback=function(k) ui:SetMinimizeKeybind(k) end})
-
-    -- Config (opsional)
-    Acinonyx:BindConfig({Folder="ACX_UI", File="config.json"})
-    -- Acinonyx:SaveConfig() / Acinonyx:LoadConfig()
-
-  Catatan: library ini sengaja ditulis satu file, mudah ditempel ke repo.
+  Acinonyx UI Library (Fluent-style rebuild, smart dropdown)
+  Visuals: acrylic, rounded, shadow tipis, profile card bawah kiri, overlay minimize kiri-tengah, notif kanan-bawah
+  System: ScreenGui global + PopupRoot (ala Fluent/Linoria), dropdown sticky & smart placement.
+  Version: 3.1.0
 ]]
 
 local Acinonyx = {}
-Acinonyx._version = "3.0.0"
+Acinonyx._version = "3.1.0"
 
 -- Services
 local Players          = game:GetService("Players")
@@ -62,6 +32,7 @@ PopupRoot.Name = "PopupRoot"
 PopupRoot.BackgroundTransparency = 1
 PopupRoot.Size = UDim2.fromScale(1,1)
 PopupRoot.ZIndex = 500
+PopupRoot.ClipsDescendants = false
 PopupRoot.Parent = Screen
 
 -- Theme
@@ -256,28 +227,40 @@ function Acinonyx:LoadConfig()
   self:MakeNotification({Name="Load", Content="Gagal decode config.", Time=2}); return false
 end
 
--- Sticky-follow ala Fluent (dropdown/menus selalu nempel & di atas)
+-- Smart sticky-follow: muncul di bawah (fallback ke atas kalau mentok)
 local function attachStickyFollow(menu, box)
-  local conns = {}
-  local function place()
-    if not menu or not menu.Parent or not menu.Visible then return end
-    local ap, as = box.AbsolutePosition, box.AbsoluteSize
-    local inset = Screen.IgnoreGuiInset and Vector2.new(0,0) or GuiService:GetGuiInset()
-    menu.Position = UDim2.fromOffset(ap.X - inset.X, ap.Y - inset.Y + as.Y + 4)
-  end
-  place()
-  table.insert(conns, RunService.RenderStepped:Connect(place))
-  table.insert(conns, box:GetPropertyChangedSignal("AbsolutePosition"):Connect(place))
-  table.insert(conns, box:GetPropertyChangedSignal("AbsoluteSize"):Connect(place))
-  local sf = box:FindFirstAncestorWhichIsA("ScrollingFrame")
-  if sf then
-    table.insert(conns, sf:GetPropertyChangedSignal("CanvasPosition"):Connect(place))
-    table.insert(conns, sf:GetPropertyChangedSignal("AbsoluteWindowSize"):Connect(place))
-  end
-  menu.AncestryChanged:Connect(function(_, parent)
-    if not parent then for _,c in ipairs(conns) do pcall(function() c:Disconnect() end) end end
-  end)
-  return { Update = place, Disconnect = function() for _,c in ipairs(conns) do pcall(function() c:Disconnect() end) end end }
+    local conns = {}
+    local GAP  = 10
+    local function place()
+        if not menu or not menu.Parent or not menu.Visible then return end
+        local ap, as = box.AbsolutePosition, box.AbsoluteSize
+        local inset   = (Screen and Screen.IgnoreGuiInset) and Vector2.new(0,0) or GuiService:GetGuiInset()
+        local parent  = menu.Parent or Screen
+        local screenSz= parent.AbsoluteSize
+        local x = ap.X - inset.X
+        local y = ap.Y - inset.Y + as.Y + GAP -- default di bawah
+        local mw, mh = menu.AbsoluteSize.X, menu.AbsoluteSize.Y
+        if y + mh > screenSz.Y - 8 then -- kalau mentok bawah, taruh di atas
+            y = ap.Y - inset.Y - mh - GAP
+        end
+        if x + mw > screenSz.X - 8 then x = math.max(8, screenSz.X - mw - 8) end
+        if x < 8 then x = 8 end
+        menu.Position = UDim2.fromOffset(x, y)
+    end
+    place()
+    table.insert(conns, RunService.RenderStepped:Connect(place))
+    table.insert(conns, box:GetPropertyChangedSignal("AbsolutePosition"):Connect(place))
+    table.insert(conns, box:GetPropertyChangedSignal("AbsoluteSize"):Connect(place))
+    local sf = box:FindFirstAncestorWhichIsA("ScrollingFrame")
+    if sf then
+        table.insert(conns, sf:GetPropertyChangedSignal("CanvasPosition"):Connect(place))
+        table.insert(conns, sf:GetPropertyChangedSignal("AbsoluteWindowSize"):Connect(place))
+    end
+    table.insert(conns, menu:GetPropertyChangedSignal("AbsoluteSize"):Connect(place))
+    menu.AncestryChanged:Connect(function(_, parent)
+        if not parent then for _,c in ipairs(conns) do pcall(function() c:Disconnect() end) end end
+    end)
+    return { Update = place, Disconnect = function() for _,c in ipairs(conns) do pcall(function() c:Disconnect() end) end end }
 end
 
 -- Metatables
@@ -575,7 +558,7 @@ function SectionMT:AddDropdown(opts)
   local function choose(v) selected=v; Box.Text=tostring(v); task.spawn(cb,v); if Menu then Menu.Visible=false end; if outsideConn then outsideConn:Disconnect(); outsideConn=nil end; if stick then stick:Disconnect(); stick=nil end; return v end
   Box.MouseButton1Click:Connect(function()
     if Menu then Menu.Visible = not Menu.Visible; if Menu.Visible and stick then stick.Update() end; return end
-    Menu = Instance.new("Frame"); Menu.BackgroundColor3 = Acinonyx.Theme.Bg; Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, math.clamp(#list*28, 36, 180)); Menu.Parent = PopupRoot; Menu.ZIndex = 501; roundify(Menu); stroke(Menu, Acinonyx.Theme.Accent); padding(Menu,4)
+    Menu = Instance.new("Frame"); Menu.BackgroundColor3 = Acinonyx.Theme.Bg; Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, math.clamp(#list*28, 36, 180)); Menu.Parent = PopupRoot; Menu.ZIndex = 501; Menu.ClipsDescendants=false; roundify(Menu); stroke(Menu, Acinonyx.Theme.Accent); padding(Menu,4)
     local L = Instance.new("UIListLayout"); L.Parent=Menu; L.SortOrder=Enum.SortOrder.LayoutOrder; L.Padding=UDim.new(0,4)
     for _,opt in ipairs(list) do
       local row=Instance.new("TextButton"); row.BackgroundColor3=Acinonyx.Theme.Bg2; row.Text=tostring(opt); row.TextColor3=Acinonyx.Theme.Text; row.TextSize=Acinonyx.Theme.TextSize; row.Font=Acinonyx.Theme.Font; row.Size=UDim2.new(1,0,0,24); row.Parent=Menu; row.ZIndex=502; roundify(row); stroke(row,Acinonyx.Theme.Accent)
@@ -588,10 +571,7 @@ function SectionMT:AddDropdown(opts)
       if gpe then return end
       if input.UserInputType==Enum.UserInputType.MouseButton1 then
         local p=input.Position
-        local function inside(gui)
-          local pos,size = gui.AbsolutePosition, gui.AbsoluteSize
-          return p.X>=pos.X and p.X<=pos.X+size.X and p.Y>=pos.Y and p.Y<=pos.Y+size.Y
-        end
+        local function inside(gui) local pos,size=gui.AbsolutePosition,gui.AbsoluteSize return p.X>=pos.X and p.X<=pos.X+size.X and p.Y>=pos.Y and p.Y<=pos.Y+size.Y end
         if not inside(Menu) and not inside(Box) then Menu.Visible=false; if outsideConn then outsideConn:Disconnect(); outsideConn=nil end end
       end
     end)
@@ -612,7 +592,7 @@ function SectionMT:AddMultiDropdown(opts)
   local function fire() task.spawn(cb, selectedList()) end
   Box.MouseButton1Click:Connect(function()
     if Menu then Menu.Visible = not Menu.Visible; if Menu.Visible and stick then stick.Update() end; return end
-    Menu = Instance.new("Frame"); Menu.BackgroundColor3=Acinonyx.Theme.Bg; Menu.Size=UDim2.new(0,Box.AbsoluteSize.X,0,math.clamp(#list*30,36,220)); Menu.Parent = PopupRoot; Menu.ZIndex=501; roundify(Menu); stroke(Menu,Acinonyx.Theme.Accent); padding(Menu,4)
+    Menu = Instance.new("Frame"); Menu.BackgroundColor3=Acinonyx.Theme.Bg; Menu.Size=UDim2.new(0,Box.AbsoluteSize.X,0,math.clamp(#list*30,36,220)); Menu.Parent = PopupRoot; Menu.ZIndex=501; Menu.ClipsDescendants=false; roundify(Menu); stroke(Menu,Acinonyx.Theme.Accent); padding(Menu,4)
     local L=Instance.new("UIListLayout"); L.Parent=Menu; L.SortOrder=Enum.SortOrder.LayoutOrder; L.Padding=UDim.new(0,4)
     for _,opt in ipairs(list) do
       local key=tostring(opt)
