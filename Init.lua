@@ -151,8 +151,8 @@ local function attachStickyFollow(menu, box)
         if not menu or not menu.Parent or not menu.Visible then return end
         local absPos  = box.AbsolutePosition
         local absSize = box.AbsoluteSize
-        local x = math.clamp(absPos.X, 0, Screen.AbsoluteSize.X - menu.AbsoluteSize.X)
-        local y = math.clamp(absPos.Y + absSize.Y + 4, 0, Screen.AbsoluteSize.Y - menu.AbsoluteSize.Y)
+        local x = math.clamp(absPos.X, 0, screen.AbsoluteSize.X - menu.AbsoluteSize.X)
+        local y = math.clamp(absPos.Y + absSize.Y + 4, 0, screen.AbsoluteSize.Y - menu.AbsoluteSize.Y)
         menu.Position = UDim2.fromOffset(x, y)
     end
     conn = game:GetService("RunService").RenderStepped:Connect(update)
@@ -793,7 +793,7 @@ function SectionMT:AddDropdown(opts)
             return
         end
         Menu = Instance.new("Frame")
-        local _stick = attachStickyFollow(Menu, Box); _stick.Update()
+        local _stick = attachStickyFollow(Menu, Box, Screen); _stick.Update()
         Menu.BackgroundColor3 = Acinonyx._theme.Bg
         Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, math.clamp(#list*28, 36, 180))
         Menu.Position = UDim2.new(0, Box.AbsolutePosition.X, 0, Box.AbsolutePosition.Y + Box.AbsoluteSize.Y + 4)
@@ -908,7 +908,7 @@ function SectionMT:AddMultiDropdown(opts)
         end
 
         Menu = Instance.new("Frame")
-        local _stick = attachStickyFollow(Menu, Box); _stick.Update()
+        local _stick = attachStickyFollow(Menu, Box, Screen); _stick.Update()
         Menu.BackgroundColor3 = Acinonyx._theme.Bg
         Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, math.clamp(#list*30, 36, 220))
         Menu.Position = UDim2.new(0, Box.AbsolutePosition.X, 0, Box.AbsolutePosition.Y + Box.AbsoluteSize.Y + 4)
