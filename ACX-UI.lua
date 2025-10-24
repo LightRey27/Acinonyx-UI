@@ -457,9 +457,8 @@ function Orion:MakeWindow(opts)
         local Card = Instance.new("Frame")
         Card.Name = "ProfileCard"
         Card.BackgroundColor3 = Orion._theme.Bg
-        Card.Size = UDim2.new(1, -16, 0, 72)
-        Card.Position = UDim2.new(0, 8, 1, -80)
-        Card.AnchorPoint = Vector2.new(0,1)
+        Card.AnchorPoint = Vector2.new(0, 1)
+        Card.Position = UDim2.new(0, 8, 1, -8)
         Card.Parent = LeftPane
         roundify(Card, 12); stroke(Card)
 
