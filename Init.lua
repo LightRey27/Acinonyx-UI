@@ -691,7 +691,7 @@ function SectionMT:AddDropdown(opts)
     Box.Parent = Item
     roundify(Box); stroke(Box, Orion._theme.Navy)
 
-    local Menu; local selected = def
+    local Menu; local ClickCatcher; local selected = def
     local function choose(v)
         selected = v; Box.Text = tostring(v); task.spawn(cb, v)
         if Menu then Menu.Visible = false end
@@ -699,87 +699,78 @@ function SectionMT:AddDropdown(opts)
     end
 
     Box.MouseButton1Click:Connect(function()
-    if Menu then
-        Menu.Visible = not Menu.Visible
-        return
-    end
+        if Menu then
+            Menu.Visible = not Menu.Visible
+            if ClickCatcher then ClickCatcher.Visible = Menu.Visible end
+            return
+        end
 
-    -- BUAT MENU DI LEVEL SCREEN (overlay)
-    Menu = Instance.new("Frame")
-    Menu.BackgroundColor3 = Orion._theme.Bg
-    Menu.ClipsDescendants = true
-    Menu.AutomaticSize = Enum.AutomaticSize.None
-    Menu.Active = true
-    Menu.ZIndex = 1000  -- penting
-    local rowsZ = 1001  -- untuk item baris
-    -- ukuran menu
-    local height = math.clamp(#list * 28, 36, 180)
-    Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, height)
+        -- Render menu at screen level to avoid clipping/z-order issues
+        Menu = Instance.new("Frame")
+        Menu.BackgroundColor3 = Orion._theme.Bg
+        Menu.ClipsDescendants = true
+        Menu.Active = true
+        Menu.ZIndex = 1000
+        local rowsZ = 1001
+        local height = math.clamp(#list*28, 36, 180)
+        Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, height)
+        local abs = Box.AbsolutePosition
+        Menu.Position = UDim2.fromOffset(abs.X, abs.Y + Box.AbsoluteSize.Y + 4)
+        Menu.Parent = Screen
+        roundify(Menu); stroke(Menu, Orion._theme.Navy); padding(Menu, 4)
 
-    -- posisikan berdasarkan posisi absolut tombol
-    local abs = Box.AbsolutePosition
-    Menu.Position = UDim2.fromOffset(abs.X, abs.Y + Box.AbsoluteSize.Y + 4)
+        local L = Instance.new("UIListLayout"); L.Parent = Menu; L.SortOrder = Enum.SortOrder.LayoutOrder; L.Padding = UDim.new(0, 4)
 
-    -- parent ke Screen (overlay global)
-    Menu.Parent = Screen
+        -- click outside to close
+        ClickCatcher = Instance.new("TextButton")
+        ClickCatcher.BackgroundTransparency = 1
+        ClickCatcher.Text = ""
+        ClickCatcher.ZIndex = 999
+        ClickCatcher.Size = UDim2.fromScale(1, 1)
+        ClickCatcher.Position = UDim2.fromOffset(0, 0)
+        ClickCatcher.Parent = Screen
+        ClickCatcher.MouseButton1Click:Connect(function()
+            if Menu then Menu:Destroy(); Menu = nil end
+            if ClickCatcher then ClickCatcher:Destroy(); ClickCatcher = nil end
+        end)
 
-    roundify(Menu)
-    stroke(Menu, Orion._theme.Navy)
-    padding(Menu, 4)
-
-    local L = Instance.new("UIListLayout")
-    L.Parent = Menu
-    L.SortOrder = Enum.SortOrder.LayoutOrder
-    L.Padding = UDim.new(0, 4)
-
-    -- optional: klik di luar untuk menutup
-    local ClickCatcher = Instance.new("TextButton")
-    ClickCatcher.BackgroundTransparency = 1
-    ClickCatcher.Text = ""
-    ClickCatcher.ZIndex = 999
-    ClickCatcher.Size = UDim2.fromScale(1, 1)
-    ClickCatcher.Position = UDim2.fromOffset(0, 0)
-    ClickCatcher.Parent = Screen
-    ClickCatcher.MouseButton1Click:Connect(function()
-        if Menu then Menu:Destroy(); Menu = nil end
-        ClickCatcher:Destroy()
+        for _, opt in ipairs(list) do
+            local row = Instance.new("TextButton")
+            row.ZIndex = rowsZ
+            row.BackgroundColor3 = Orion._theme.Bg2
+            row.Text = tostring(opt)
+            row.TextColor3 = Orion._theme.Text
+            row.TextSize = Orion._theme.TextSize
+            row.Font = Orion._theme.Font
+            row.Size = UDim2.new(1, 0, 0, 24)
+            row.Parent = Menu
+            roundify(row); stroke(row, Orion._theme.Navy)
+            row.MouseEnter:Connect(function() tween(row, 0.08, {BackgroundColor3 = Orion._theme.NavySoft}) end)
+            row.MouseLeave:Connect(function() if selected ~= opt then tween(row, 0.08, {BackgroundColor3 = Orion._theme.Bg2}) end end)
+            row.MouseButton1Click:Connect(function()
+                choose(opt)
+                for _, r in ipairs(Menu:GetChildren()) do
+                    if r:IsA("TextButton") and r ~= ClickCatcher then tween(r, 0.08, {BackgroundColor3 = Orion._theme.Bg2}) end
+                end
+                tween(row, 0.08, {BackgroundColor3 = Orion._theme.Navy})
+                if Menu then Menu:Destroy(); Menu = nil end
+                if ClickCatcher then ClickCatcher:Destroy(); ClickCatcher = nil end
+            end)
+        end
     end)
 
-    for _, opt in ipairs(list) do
-        local row = Instance.new("TextButton")
-        row.ZIndex = rowsZ
-        row.BackgroundColor3 = Orion._theme.Bg2
-        row.Text = tostring(opt)
-        row.TextColor3 = Orion._theme.Text
-        row.TextSize = Orion._theme.TextSize
-        row.Font = Orion._theme.Font
-        row.Size = UDim2.new(1, 0, 0, 24)
-        row.Parent = Menu
-        roundify(row)
-        stroke(row, Orion._theme.Navy)
+    if def then choose(def) end
 
-        row.MouseEnter:Connect(function()
-            tween(row, 0.08, { BackgroundColor3 = Orion._theme.NavySoft })
-        end)
-        row.MouseLeave:Connect(function()
-            if selected ~= opt then
-                tween(row, 0.08, { BackgroundColor3 = Orion._theme.Bg2 })
-            end
-        end)
-        row.MouseButton1Click:Connect(function()
-            choose(opt)
-            for _, r in ipairs(Menu:GetChildren()) do
-                if r:IsA("TextButton") and r ~= ClickCatcher then
-                    tween(r, 0.08, { BackgroundColor3 = Orion._theme.Bg2 })
-                end
-            end
-            tween(row, 0.08, { BackgroundColor3 = Orion._theme.Navy })
-            -- tutup menu setelah pilih (opsional)
+    return {
+        Set = function(_, v) choose(v) end,
+        Get = function() return selected end,
+        Refresh = function(_, newList, newDefault)
+            list = newList or list
             if Menu then Menu:Destroy(); Menu = nil end
-            if ClickCatcher then ClickCatcher:Destroy() end
-        end)
-    end
-end)
+            if newDefault ~= nil then choose(newDefault) end
+        end
+    }
+end
 
 function SectionMT:AddTextbox(opts)
     opts = opts or {}
@@ -859,9 +850,8 @@ function SectionMT:AddMultiDropdown(opts)
     local name = tostring(opts.Name or "Multi Dropdown")
     local list = opts.Options or {}
     local defaults = opts.Default or {}
-    local cb = opts.Callback or function(_) end -- callback(table selected)
+    local cb = opts.Callback or function(_) end
 
-    -- normalize defaults into set
     local selectedSet = {}
     if typeof(defaults) == "table" then
         for _, v in ipairs(defaults) do selectedSet[tostring(v)] = true end
@@ -897,84 +887,94 @@ function SectionMT:AddMultiDropdown(opts)
         end
     end
 
-    local Menu
-    local function fire()
-        task.spawn(cb, selectedList())
-    end
+    local Menu; local ClickCatcher
+    local function fire() task.spawn(cb, selectedList()) end
 
     Box.MouseButton1Click:Connect(function()
-    if Menu then
-        Menu.Visible = not Menu.Visible
-        return
-    end
+        if Menu then
+            Menu.Visible = not Menu.Visible
+            if ClickCatcher then ClickCatcher.Visible = Menu.Visible end
+            return
+        end
+        Menu = Instance.new("Frame")
+        Menu.BackgroundColor3 = Orion._theme.Bg
+        Menu.ClipsDescendants = true
+        Menu.Active = true
+        Menu.ZIndex = 1000
+        local rowsZ = 1001
+        local height = math.clamp(#list*30, 36, 220)
+        Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, height)
+        local abs = Box.AbsolutePosition
+        Menu.Position = UDim2.fromOffset(abs.X, abs.Y + Box.AbsoluteSize.Y + 4)
+        Menu.Parent = Screen
+        roundify(Menu); stroke(Menu, Orion._theme.Navy); padding(Menu, 4)
 
-    Menu = Instance.new("Frame")
-    Menu.BackgroundColor3 = Orion._theme.Bg
-    Menu.ClipsDescendants = true
-    Menu.Active = true
-    Menu.ZIndex = 1000
-    local rowsZ = 1001
+        local L = Instance.new("UIListLayout"); L.Parent = Menu; L.SortOrder = Enum.SortOrder.LayoutOrder; L.Padding = UDim.new(0, 4)
 
-    local height = math.clamp(#list * 30, 36, 220)
-    Menu.Size = UDim2.new(0, Box.AbsoluteSize.X, 0, height)
+        ClickCatcher = Instance.new("TextButton")
+        ClickCatcher.BackgroundTransparency = 1
+        ClickCatcher.Text = ""
+        ClickCatcher.ZIndex = 999
+        ClickCatcher.Size = UDim2.fromScale(1, 1)
+        ClickCatcher.Position = UDim2.fromOffset(0, 0)
+        ClickCatcher.Parent = Screen
+        ClickCatcher.MouseButton1Click:Connect(function()
+            if Menu then Menu:Destroy(); Menu = nil end
+            if ClickCatcher then ClickCatcher:Destroy(); ClickCatcher = nil end
+        end)
 
-    local abs = Box.AbsolutePosition
-    Menu.Position = UDim2.fromOffset(abs.X, abs.Y + Box.AbsoluteSize.Y + 4)
-
-    Menu.Parent = Screen
-
-    roundify(Menu)
-    stroke(Menu, Orion._theme.Navy)
-    padding(Menu, 4)
-
-    local L = Instance.new("UIListLayout")
-    L.Parent = Menu
-    L.SortOrder = Enum.SortOrder.LayoutOrder
-    L.Padding = UDim.new(0, 4)
-
-    local ClickCatcher = Instance.new("TextButton")
-    ClickCatcher.BackgroundTransparency = 1
-    ClickCatcher.Text = ""
-    ClickCatcher.ZIndex = 999
-    ClickCatcher.Size = UDim2.fromScale(1, 1)
-    ClickCatcher.Position = UDim2.fromOffset(0, 0)
-    ClickCatcher.Parent = Screen
-    ClickCatcher.MouseButton1Click:Connect(function()
-        if Menu then Menu:Destroy(); Menu = nil end
-        ClickCatcher:Destroy()
+        for _, opt in ipairs(list) do
+            local key = tostring(opt)
+            local row = Instance.new("TextButton")
+            row.ZIndex = rowsZ
+            row.BackgroundColor3 = selectedSet[key] and Orion._theme.Navy or Orion._theme.Bg2
+            row.Text = key
+            row.TextColor3 = Orion._theme.Text
+            row.TextSize = Orion._theme.TextSize
+            row.Font = Orion._theme.Font
+            row.Size = UDim2.new(1, 0, 0, 24)
+            row.Parent = Menu
+            roundify(row); stroke(row, Orion._theme.Navy)
+            row.MouseEnter:Connect(function()
+                if not selectedSet[key] then tween(row, 0.08, {BackgroundColor3 = Orion._theme.NavySoft}) end
+            end)
+            row.MouseLeave:Connect(function()
+                if not selectedSet[key] then tween(row, 0.08, {BackgroundColor3 = Orion._theme.Bg2}) end
+            end)
+            row.MouseButton1Click:Connect(function()
+                selectedSet[key] = not selectedSet[key]
+                tween(row, 0.08, {BackgroundColor3 = selectedSet[key] and Orion._theme.Navy or Orion._theme.Bg2})
+                updateBoxText(); fire()
+            end)
+        end
     end)
 
-    for _, opt in ipairs(list) do
-        local key = tostring(opt)
-        local row = Instance.new("TextButton")
-        row.ZIndex = rowsZ
-        row.BackgroundColor3 = selectedSet[key] and Orion._theme.Navy or Orion._theme.Bg2
-        row.Text = key
-        row.TextColor3 = Orion._theme.Text
-        row.TextSize = Orion._theme.TextSize
-        row.Font = Orion._theme.Font
-        row.Size = UDim2.new(1, 0, 0, 24)
-        row.Parent = Menu
-        roundify(row)
-        stroke(row, Orion._theme.Navy)
-        row.MouseEnter:Connect(function()
-            if not selectedSet[key] then
-                tween(row, 0.08, { BackgroundColor3 = Orion._theme.NavySoft })
-            end
-        end)
-        row.MouseLeave:Connect(function()
-            if not selectedSet[key] then
-                tween(row, 0.08, { BackgroundColor3 = Orion._theme.Bg2 })
-            end
-        end)
-        row.MouseButton1Click:Connect(function()
-            selectedSet[key] = not selectedSet[key]
-            tween(row, 0.08, { BackgroundColor3 = selectedSet[key] and Orion._theme.Navy or Orion._theme.Bg2 })
-            updateBoxText()
-            fire()
-        end)
-    end
-end)
+    updateBoxText(); fire()
 
+    return {
+        Get = function()
+            return selectedList()
+        end,
+        IsSelected = function(_, v)
+            return not not selectedSet[tostring(v)]
+        end,
+        SetSelected = function(_, v, on)
+            selectedSet[tostring(v)] = not not on
+            updateBoxText(); fire()
+        end,
+        Clear = function()
+            selectedSet = {}; updateBoxText(); fire()
+        end,
+        Refresh = function(_, newList, newDefaults)
+            list = newList or list
+            selectedSet = {}
+            if typeof(newDefaults) == "table" then
+                for _, v in ipairs(newDefaults) do selectedSet[tostring(v)] = true end
+            end
+            if Menu then Menu:Destroy(); Menu = nil end
+            updateBoxText(); fire()
+        end
+    }
+end
 
 return Orion
