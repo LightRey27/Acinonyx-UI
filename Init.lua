@@ -1,26 +1,14 @@
 --[[
-    AcinonyxUI (Fusion 0.4, single-file)
-    Components: Window (draggable), Button, Dropdown (via Portal overlay)
-    Dependency: Fusion (0.4). Put "Fusion" ModuleScript in ReplicatedStorage or ReplicatedStorage/Packages/Fusion.
-
-    Usage:
-      local Rep = game:GetService("ReplicatedStorage")
-      local Acx = require(Rep:WaitForChild("AcinonyxUI"))
-      local ui = Acx.createWindow({ Title = "Acinonyx UI (Fusion)", Size = UDim2.fromOffset(560, 380) })
-      ui.addButton({ Text = "Click", OnPressed=function() print("clicked") end })
-      ui.addDropdown({ Items={"A","B","C"}, Default="B", OnChanged=function(v) print("sel:", v) end })
-
-    Notes:
-      - Dropdown memakai Portal (ScreenGui overlay, DisplayOrder tinggi) => selalu tampil di atas.
-      - Theme bersifat reaktif (bisa diubah runtime).
+  AcinonyxUI (Fusion 0.4, single-file)
+  Components: Window (draggable), Button, Dropdown (Portal overlay)
+  Dependency: Fusion (0.4) di ReplicatedStorage atau ReplicatedStorage/Packages/Fusion.
 ]]
 
 local Players = game:GetService("Players")
 local Rep     = game:GetService("ReplicatedStorage")
 
--- ========= Require Fusion (0.4) =========
+-- ===== Require Fusion (0.4) =====
 local function tryRequireFusion()
-    -- Prioritas: Rep.Packages.Fusion → Rep.Fusion → error
     local ok, mod
     local pkg = Rep:FindFirstChild("Packages")
     if pkg and pkg:FindFirstChild("Fusion") then
@@ -46,16 +34,8 @@ local Observer   = Fusion.Observer
 local ForValues  = Fusion.ForValues
 local Ref        = Fusion.Ref
 local cleanup    = Fusion.cleanup
-local scope      = Fusion.scope
 
--- ========= Small helpers =========
-local function withScope(build)
-    local s = scope()
-    local result = build(s)
-    return result, function() s:destroy() end
-end
-
--- Theme (reactive)
+-- ===== Theme (reactive) =====
 local Theme = {
     Mode    = Value("Dark"),
     Colors  = Value({
@@ -64,7 +44,7 @@ local Theme = {
         Text    = Color3.fromRGB(235,235,240),
         Muted   = Color3.fromRGB(150,150,160),
         Primary = Color3.fromRGB(120,162,255),
-        Accent  = Color3.fromRGB(90, 200, 140),
+        Accent  = Color3.fromRGB(90,200,140),
         Danger  = Color3.fromRGB(255,95,110),
     }),
     Radius  = Value(10),
@@ -73,22 +53,22 @@ local Theme = {
 }
 Theme.TextColor = Computed(function() return Theme.Colors:get().Text end)
 
--- Style micro-helpers
+-- ===== Style helpers =====
 local function Corner(radius)
     return New "UICorner" { CornerRadius = UDim.new(0, radius) }
 end
 local function Padding(p)
     return New "UIPadding" {
         PaddingTop = UDim.new(0,p), PaddingBottom = UDim.new(0,p),
-        PaddingLeft= UDim.new(0,p), PaddingRight  = UDim.new(0,p),
+        PaddingLeft= UDim.new(0,p), PaddingRight = UDim.new(0,p),
     }
 end
 local function Stroke(color, thickness)
     return New "UIStroke" { Color = color, Thickness = thickness or 1 }
 end
 
--- ========= Portal Overlay (ScreenGui di atas semua) =========
-local overlayGui :: ScreenGui? = nil
+-- ===== Portal Overlay =====
+local overlayGui -- ScreenGui
 local function getOverlayRoot()
     if overlayGui and overlayGui.Parent then return overlayGui end
     local pgui = Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -97,13 +77,13 @@ local function getOverlayRoot()
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
         IgnoreGuiInset = true,
         ResetOnSpawn = false,
-        DisplayOrder = 10000, -- lebih tinggi dari window utama
+        DisplayOrder = 10000,
         Parent = pgui
     }
     return overlayGui
 end
 
--- ========= Components =========
+-- ===== Components =====
 
 -- Window (draggable)
 local function Window(props)
@@ -111,7 +91,6 @@ local function Window(props)
     local pos = Value(props.Position or UDim2.fromOffset(200, 140))
     local dragging = Value(false)
     local dragStart, startPos
-
     local winRef = Value(nil)
 
     local function startDrag(input)
@@ -138,19 +117,15 @@ local function Window(props)
             Corner(12),
             Stroke(Computed(function() return C:get().Muted end), 1),
 
-            -- Title Bar (drag handle)
             New "TextButton" {
                 Name = "TitleBar",
                 BackgroundColor3 = Computed(function() return C:get().Panel end),
                 TextColor3 = Computed(function() return C:get().Text end),
-                Font = Theme.Font:get(),
-                TextSize = 16,
+                Font = Theme.Font:get(), TextSize = 16,
                 Text = props.Title or "Acinonyx UI",
                 Size = UDim2.new(1,0,0,36),
                 ZIndex = 11,
-                [Children] = {
-                    Corner(12),
-                },
+                [Children] = { Corner(12) },
                 [OnEvent "InputBegan"] = function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 then
                         startDrag(input)
@@ -168,7 +143,6 @@ local function Window(props)
                 end
             },
 
-            -- Body
             New "Frame" {
                 Name = "Body",
                 BackgroundTransparency = 1,
@@ -177,7 +151,7 @@ local function Window(props)
                 [Children] = {
                     New "UIPadding" {
                         PaddingTop=UDim.new(0,10), PaddingLeft=UDim.new(0,10),
-                        PaddingRight=UDim.new(0,10), PaddingBottom=UDim.new(0,10),
+                        PaddingRight=UDim.new(0,10), PaddingBottom=UDim.new(0,10)
                     }
                 }
             }
@@ -205,16 +179,11 @@ local function Button(props)
             return pressed:get() and base:lerp(Color3.new(0,0,0), 0.2) or base
         end),
         Size = props.Size or UDim2.fromOffset(120, 32),
-        [Children] = {
-            Corner(Theme.Radius:get()),
-            Padding(8),
-        },
+        [Children] = { Corner(Theme.Radius:get()), Padding(8) },
         [OnEvent "MouseButton1Down"] = function() pressed:set(true) end,
         [OnEvent "MouseButton1Up"]   = function() pressed:set(false) end,
         [OnEvent "Activated"] = function()
-            if props.OnPressed then
-                task.spawn(props.OnPressed)
-            end
+            if props.OnPressed then task.spawn(props.OnPressed) end
         end,
         Parent = props.Parent
     }
@@ -230,17 +199,16 @@ local function Dropdown(props)
     local anchorRef = Value(nil)
     local menuPos   = Value(UDim2.fromOffset(0,0))
 
-    -- Hitung posisi menu saat open berdasarkan AbsolutePosition tombol
+    -- hitung posisi menu ketika open
     Observer(open):onChange(function(now)
         local btn = anchorRef:get()
-        if now and btn and (btn.AbsolutePosition ~= nil) then
+        if now and btn and btn.AbsolutePosition then
             local pos = btn.AbsolutePosition
             local size = btn.AbsoluteSize
             menuPos:set(UDim2.fromOffset(pos.X, pos.Y + size.Y + 2))
         end
     end)
 
-    -- Portal node (di overlay gui)
     local function renderMenu()
         if not open:get() then return nil end
         local root = getOverlayRoot()
@@ -262,7 +230,6 @@ local function Dropdown(props)
                         Corner(8),
                         Stroke(Computed(function() return C:get().Muted end), 1),
                         New "UIListLayout" { Padding = UDim.new(0,2), SortOrder = Enum.SortOrder.LayoutOrder },
-
                         ForValues(items, function(i, idx)
                             return New "TextButton" {
                                 Name = "Item_"..tostring(idx),
@@ -279,15 +246,13 @@ local function Dropdown(props)
                                 [Children] = { Corner(6) },
                                 [OnEvent "Activated"] = function()
                                     sel:set(i); open:set(false)
-                                    if props.OnChanged then
-                                        task.spawn(props.OnChanged, i)
-                                    end
+                                    if props.OnChanged then task.spawn(props.OnChanged, i) end
                                 end
                             }
                         end, cleanup)
                     }
                 }
-            ]
+            }
         }
     end
 
@@ -306,24 +271,17 @@ local function Dropdown(props)
                 Text = Computed(function() return tostring(sel:get()) end),
                 Size = UDim2.fromScale(1,1),
                 ZIndex = 50,
-                [Children] = {
-                    Corner(8),
-                    Padding(8),
-                },
-                [OnEvent "Activated"] = function()
-                    open:set(not open:get())
-                end,
+                [Children] = { Corner(8), Padding(8) },
+                [OnEvent "Activated"] = function() open:set(not open:get()) end,
                 [Ref] = function(inst) anchorRef:set(inst) end
             },
-
             Computed(renderMenu)
         },
         Parent = props.Parent
     }
 end
 
--- ========= Public API =========
-
+-- ===== Public API =====
 local AcinonyxUI = {}
 
 function AcinonyxUI.createWindow(opts)
@@ -333,17 +291,16 @@ function AcinonyxUI.createWindow(opts)
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
         IgnoreGuiInset = true,
         ResetOnSpawn = false,
-        DisplayOrder = 9999, -- utama; overlay (portal) pakai 10000+
+        DisplayOrder = 9999,
         Parent = pgui
     }
 
     local win = Window({
-        Title = (opts and opts.Title) or "Acinonyx UI",
-        Size  = (opts and opts.Size) or UDim2.fromOffset(520,360),
+        Title  = (opts and opts.Title) or "Acinonyx UI",
+        Size   = (opts and opts.Size) or UDim2.fromOffset(520,360),
         Parent = root
     })
 
-    -- expose a tiny fluent-like builder
     local api = {
         ScreenGui = root,
         Window = win,
@@ -360,10 +317,8 @@ function AcinonyxUI.createWindow(opts)
             if root and root.Parent then root:Destroy() end
         end
     }
-
     return api
 end
 
 AcinonyxUI.Theme = Theme
-
 return AcinonyxUI
