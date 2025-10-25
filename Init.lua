@@ -1,324 +1,301 @@
 --[[
-  AcinonyxUI (Fusion 0.4, single-file)
-  Components: Window (draggable), Button, Dropdown (Portal overlay)
-  Dependency: Fusion (0.4) di ReplicatedStorage atau ReplicatedStorage/Packages/Fusion.
-]]
+  Acinonyx UI Library — Rayfield‑Compatible API (v0.1)
+  ----------------------------------------------------
+  Fresh implementation with an API designed to mirror Rayfield so your
+  existing Rayfield scripts can be ported with tiny/no changes.
 
-local Players = game:GetService("Players")
-local Rep     = game:GetService("ReplicatedStorage")
-
--- ===== Require Fusion (0.4) =====
-local function tryRequireFusion()
-    local ok, mod
-    local pkg = Rep:FindFirstChild("Packages")
-    if pkg and pkg:FindFirstChild("Fusion") then
-        ok, mod = pcall(function() return require(pkg.Fusion) end)
-        if ok and mod then return mod end
-    end
-    if Rep:FindFirstChild("Fusion") then
-        ok, mod = pcall(function() return require(Rep.Fusion) end)
-        if ok and mod then return mod end
-    end
-    error("[AcinonyxUI] Fusion not found. Put Fusion ModuleScript in ReplicatedStorage or ReplicatedStorage/Packages/Fusion")
-end
-
-local Fusion = tryRequireFusion()
-
--- Aliases
-local New        = Fusion.New
-local Children   = Fusion.Children
-local OnEvent    = Fusion.OnEvent
-local Value      = Fusion.Value
-local Computed   = Fusion.Computed
-local Observer   = Fusion.Observer
-local ForValues  = Fusion.ForValues
-local Ref        = Fusion.Ref
-local cleanup    = Fusion.cleanup
-
--- ===== Theme (reactive) =====
-local Theme = {
-    Mode    = Value("Dark"),
-    Colors  = Value({
-        Bg      = Color3.fromRGB(18, 18, 20),
-        Panel   = Color3.fromRGB(26, 27, 31),
-        Text    = Color3.fromRGB(235,235,240),
-        Muted   = Color3.fromRGB(150,150,160),
-        Primary = Color3.fromRGB(120,162,255),
-        Accent  = Color3.fromRGB(90,200,140),
-        Danger  = Color3.fromRGB(255,95,110),
-    }),
-    Radius  = Value(10),
-    Padding = Value(10),
-    Font    = Value(Enum.Font.Gotham)
-}
-Theme.TextColor = Computed(function() return Theme.Colors:get().Text end)
-
--- ===== Style helpers =====
-local function Corner(radius)
-    return New "UICorner" { CornerRadius = UDim.new(0, radius) }
-end
-local function Padding(p)
-    return New "UIPadding" {
-        PaddingTop = UDim.new(0,p), PaddingBottom = UDim.new(0,p),
-        PaddingLeft= UDim.new(0,p), PaddingRight = UDim.new(0,p),
-    }
-end
-local function Stroke(color, thickness)
-    return New "UIStroke" { Color = color, Thickness = thickness or 1 }
-end
-
--- ===== Portal Overlay =====
-local overlayGui -- ScreenGui
-local function getOverlayRoot()
-    if overlayGui and overlayGui.Parent then return overlayGui end
-    local pgui = Players.LocalPlayer:WaitForChild("PlayerGui")
-    overlayGui = New "ScreenGui" {
-        Name = "AcinonyxUI_Overlay",
-        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-        IgnoreGuiInset = true,
-        ResetOnSpawn = false,
-        DisplayOrder = 10000,
-        Parent = pgui
-    }
-    return overlayGui
-end
-
--- ===== Components =====
-
--- Window (draggable)
-local function Window(props)
-    local C = Theme.Colors
-    local pos = Value(props.Position or UDim2.fromOffset(200, 140))
-    local dragging = Value(false)
-    local dragStart, startPos
-    local winRef = Value(nil)
-
-    local function startDrag(input)
-        dragging:set(true)
-        dragStart = input.Position
-        local frame = winRef:get()
-        if frame then startPos = frame.Position end
-    end
-    local function doDrag(input)
-        if not dragging:get() then return end
-        local frame = winRef:get()
-        if not frame then return end
-        local delta = input.Position - dragStart
-        pos:set(UDim2.fromOffset(startPos.X.Offset + delta.X, startPos.Y.Offset + delta.Y))
-    end
-
-    local win = New "Frame" {
-        Name = props.Name or "Window",
-        BackgroundColor3 = Computed(function() return C:get().Bg end),
-        Size = props.Size or UDim2.fromOffset(520, 360),
-        Position = pos:get(),
-        ZIndex = 10,
-        [Children] = {
-            Corner(12),
-            Stroke(Computed(function() return C:get().Muted end), 1),
-
-            New "TextButton" {
-                Name = "TitleBar",
-                BackgroundColor3 = Computed(function() return C:get().Panel end),
-                TextColor3 = Computed(function() return C:get().Text end),
-                Font = Theme.Font:get(), TextSize = 16,
-                Text = props.Title or "Acinonyx UI",
-                Size = UDim2.new(1,0,0,36),
-                ZIndex = 11,
-                [Children] = { Corner(12) },
-                [OnEvent "InputBegan"] = function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        startDrag(input)
-                    end
-                end,
-                [OnEvent "InputChanged"] = function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseMovement then
-                        doDrag(input)
-                    end
-                end,
-                [OnEvent "InputEnded"] = function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        dragging:set(false)
-                    end
-                end
-            },
-
-            New "Frame" {
-                Name = "Body",
-                BackgroundTransparency = 1,
-                Position = UDim2.fromOffset(0, 36),
-                Size = UDim2.new(1,0,1,-36),
-                [Children] = {
-                    New "UIPadding" {
-                        PaddingTop=UDim.new(0,10), PaddingLeft=UDim.new(0,10),
-                        PaddingRight=UDim.new(0,10), PaddingBottom=UDim.new(0,10)
-                    }
-                }
-            }
-        },
-        [Ref] = function(inst) winRef:set(inst) end
-    }
-
-    return win
-end
-
--- Button
-local function Button(props)
-    local pressed = Value(false)
-    local C = Theme.Colors
-
-    return New "TextButton" {
-        Name = props.Name or "Button",
-        AutoButtonColor = false,
-        Font = Theme.Font:get(),
-        Text = props.Text or "Button",
-        TextSize = props.TextSize or 14,
-        TextColor3 = Computed(function() return C:get().Text end),
-        BackgroundColor3 = Computed(function()
-            local base = C:get().Primary
-            return pressed:get() and base:lerp(Color3.new(0,0,0), 0.2) or base
-        end),
-        Size = props.Size or UDim2.fromOffset(120, 32),
-        [Children] = { Corner(Theme.Radius:get()), Padding(8) },
-        [OnEvent "MouseButton1Down"] = function() pressed:set(true) end,
-        [OnEvent "MouseButton1Up"]   = function() pressed:set(false) end,
-        [OnEvent "Activated"] = function()
-            if props.OnPressed then task.spawn(props.OnPressed) end
-        end,
-        Parent = props.Parent
-    }
-end
-
--- Dropdown (Portal overlay)
-local function Dropdown(props)
-    local items = props.Items or {}
-    local open  = Value(false)
-    local sel   = Value(props.Default or items[1])
-    local C     = Theme.Colors
-
-    local anchorRef = Value(nil)
-    local menuPos   = Value(UDim2.fromOffset(0,0))
-
-    -- hitung posisi menu ketika open
-    Observer(open):onChange(function(now)
-        local btn = anchorRef:get()
-        if now and btn and btn.AbsolutePosition then
-            local pos = btn.AbsolutePosition
-            local size = btn.AbsoluteSize
-            menuPos:set(UDim2.fromOffset(pos.X, pos.Y + size.Y + 2))
-        end
-    end)
-
-    local function renderMenu()
-        if not open:get() then return nil end
-        local root = getOverlayRoot()
-        return New "Frame" {
-            Name = "DropdownMenuPortal",
-            BackgroundTransparency = 1,
-            Size = UDim2.fromScale(1,1),
-            ZIndex = 100,
-            Parent = root,
-            [Children] = {
-                New "Frame" {
-                    Name = "Menu",
-                    BackgroundColor3 = C:get().Panel,
-                    BorderSizePixel = 0,
-                    Position = menuPos:get(),
-                    Size = UDim2.fromOffset(props.Width or 180, math.max(24, #items * 28)),
-                    ZIndex = 101,
-                    [Children] = {
-                        Corner(8),
-                        Stroke(Computed(function() return C:get().Muted end), 1),
-                        New "UIListLayout" { Padding = UDim.new(0,2), SortOrder = Enum.SortOrder.LayoutOrder },
-                        ForValues(items, function(i, idx)
-                            return New "TextButton" {
-                                Name = "Item_"..tostring(idx),
-                                LayoutOrder = idx,
-                                AutoButtonColor = true,
-                                BackgroundColor3 = C:get().Panel,
-                                TextColor3 = C:get().Text,
-                                Font = Theme.Font:get(),
-                                TextSize = 14,
-                                Text = tostring(i),
-                                Size = UDim2.new(1, -8, 0, 26),
-                                Position = UDim2.fromOffset(4,0),
-                                ZIndex = 102,
-                                [Children] = { Corner(6) },
-                                [OnEvent "Activated"] = function()
-                                    sel:set(i); open:set(false)
-                                    if props.OnChanged then task.spawn(props.OnChanged, i) end
-                                end
-                            }
-                        end, cleanup)
-                    }
-                }
-            }
-        }
-    end
-
-    return New "Frame" {
-        Name = props.Name or "Dropdown",
-        BackgroundTransparency = 1,
-        Size = props.Size or UDim2.fromOffset(props.Width or 180, 32),
-        [Children] = {
-            New "TextButton" {
-                Name = "Button",
-                AutoButtonColor = true,
-                BackgroundColor3 = C:get().Panel,
-                TextColor3 = C:get().Text,
-                Font = Theme.Font:get(),
-                TextSize = 14,
-                Text = Computed(function() return tostring(sel:get()) end),
-                Size = UDim2.fromScale(1,1),
-                ZIndex = 50,
-                [Children] = { Corner(8), Padding(8) },
-                [OnEvent "Activated"] = function() open:set(not open:get()) end,
-                [Ref] = function(inst) anchorRef:set(inst) end
-            },
-            Computed(renderMenu)
-        },
-        Parent = props.Parent
-    }
-end
-
--- ===== Public API =====
-local AcinonyxUI = {}
-
-function AcinonyxUI.createWindow(opts)
-    local pgui = Players.LocalPlayer:WaitForChild("PlayerGui")
-    local root = New "ScreenGui" {
-        Name = opts and opts.Name or "AcinonyxUI",
-        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-        IgnoreGuiInset = true,
-        ResetOnSpawn = false,
-        DisplayOrder = 9999,
-        Parent = pgui
-    }
-
-    local win = Window({
-        Title  = (opts and opts.Title) or "Acinonyx UI",
-        Size   = (opts and opts.Size) or UDim2.fromOffset(520,360),
-        Parent = root
+  Example:
+    local Rayfield = loadstring(game:HttpGet("<your raw Init.lua>"))()
+    local Window = Rayfield:CreateWindow({
+      Name = "Acinonyx Script",
+      LoadingTitle = "Acinonyx",
+      LoadingSubtitle = "Rayfield API",
+      ConfigurationSaving = { Enabled = false, FileName = "Acinonyx" },
+      KeySystem = false
     })
 
-    local api = {
-        ScreenGui = root,
-        Window = win,
-        Theme = Theme,
-        addButton = function(props)
-            props.Parent = win:FindFirstChild("Body") or win
-            return Button(props)
-        end,
-        addDropdown = function(props)
-            props.Parent = win:FindFirstChild("Body") or win
-            return Dropdown(props)
-        end,
-        destroy = function()
-            if root and root.Parent then root:Destroy() end
-        end
-    }
-    return api
+    local Tab = Window:CreateTab("Main")
+    Tab:CreateSection("Controls")
+
+    Tab:CreateToggle({ Name = "Enable", CurrentValue = true, Callback = function(v) print("toggle", v) end })
+    Tab:CreateButton({ Name = "Click", Callback = function() print("clicked") end })
+    Tab:CreateSlider({ Name = "Speed", Range = {0, 100}, Increment = 1, CurrentValue = 40, Suffix = "%", Callback = function(v) end })
+    Tab:CreateDropdown({ Name = "Mode", Options = {"A","B","C"}, CurrentOption = "A", Callback = function(o) end })
+    Tab:CreateInput({ Name = "Threshold", PlaceholderText = "number", NumbersOnly = true, OnEnter = true, Callback = function(txt) end })
+    Tab:CreateKeybind({ Name = "Toggle UI", CurrentKeybind = Enum.KeyCode.LeftControl, Callback = function(key) end })
+    Tab:CreateColorPicker({ Name = "Tint", Color = Color3.fromRGB(0,170,255), Callback = function(c) end })
+    Tab:CreateParagraph({ Title = "Info", Content = "Hello from Acinonyx" })
+
+    Rayfield:Notify({ Title = "Loaded", Content = "Acinonyx ready", Duration = 4 })
+
+  Notes:
+    • No code is copied from Rayfield; only the API surface is mimicked.
+    • Dropdown uses a high‑Z overlay to ensure it renders above everything.
+    • ConfigurationSaving / Discord / KeySystem are stubs for now.
+--]]
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- ===== Utils =====
+local function new(klass, props, children)
+  local o = Instance.new(klass)
+  if props then for k,v in pairs(props) do o[k]=v end end
+  if children then for _,c in ipairs(children) do c.Parent = o end end
+  return o
+end
+local function tw(i, g, t)
+  return TweenService:Create(i, TweenInfo.new(t or 0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), g)
+end
+local function cb(fn, ...) if typeof(fn)=="function" then task.spawn(pcall, fn, ...) end end
+local function round(n, inc) inc = inc or 1; return math.floor(n/inc+0.5)*inc end
+
+local Theme = {
+  Bg = Color3.fromRGB(16,16,19),
+  Panel = Color3.fromRGB(26,27,31),
+  Text = Color3.fromRGB(240,241,245),
+  Muted = Color3.fromRGB(180,183,190),
+  Stroke = Color3.fromRGB(54,57,63),
+  Accent = Color3.fromRGB(0,170,255),
+  Accent2 = Color3.fromRGB(0,140,220),
+  Sel = Color3.fromRGB(38,40,46)
+}
+local Z = { BASE=1, HEADER=2, TAB=3, CONTENT=4, FLOAT=20, TOAST=50 }
+
+-- Root GUI (single instance)
+local Root = new("ScreenGui", { Name="Acinonyx_Rayfield", ResetOnSpawn=false, ZIndexBehavior=Enum.ZIndexBehavior.Sibling, DisplayOrder=999999, IgnoreGuiInset=true })
+pcall(function() local old=PlayerGui:FindFirstChild(Root.Name); if old then old:Destroy() end end)
+Root.Parent = PlayerGui
+
+local ToastLayer = new("Frame", { Parent=Root, BackgroundTransparency=1, Size=UDim2.fromScale(1,1), ZIndex=Z.TOAST })
+local function notify(opts)
+  local holder = new("Frame", { Parent=ToastLayer, BackgroundColor3=Theme.Panel, Size=UDim2.fromOffset(320,96), AnchorPoint=Vector2.new(1,1), Position=UDim2.fromScale(1.02,1.02), ZIndex=Z.TOAST }, {
+    new("UICorner",{CornerRadius=UDim.new(0,12)}), new("UIStroke",{Color=Theme.Stroke,Thickness=1,Transparency=0.35}), new("UIPadding",{PaddingLeft=UDim.new(0,12),PaddingRight=UDim.new(0,12),PaddingTop=UDim.new(0,10),PaddingBottom=UDim.new(0,10)})
+  })
+  new("TextLabel", { Parent=holder, BackgroundTransparency=1, Size=UDim2.new(1,0,0,22), Font=Enum.Font.GothamBold, TextSize=16, TextXAlignment=Enum.TextXAlignment.Left, TextColor3=Theme.Text, Text=tostring(opts.Title or "Notification") })
+  new("TextLabel", { Parent=holder, BackgroundTransparency=1, Size=UDim2.new(1,0,1,-28), Position=UDim2.fromOffset(0,26), Font=Enum.Font.Gotham, TextSize=14, TextWrapped=true, TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top, TextColor3=Theme.Muted, Text=tostring(opts.Content or "") })
+  holder.BackgroundTransparency = 1
+  tw(holder,{Position=UDim2.fromScale(0.985,0.985), BackgroundTransparency=0},0.22):Play()
+  task.delay(tonumber(opts.Duration) or 4, function()
+    local a=tw(holder,{Position=UDim2.fromScale(1.05,1.05), BackgroundTransparency=1},0.18); a:Play(); a.Completed:Wait(); holder:Destroy()
+  end)
 end
 
-AcinonyxUI.Theme = Theme
-return AcinonyxUI
+-- Window factory
+local function createWindow(opts)
+  opts = opts or {}
+  local root = new("Frame", { Parent=Root, BackgroundColor3=Theme.Bg, Size=opts.Size or UDim2.fromOffset(640,440), Position=UDim2.fromScale(0.5,0.5), AnchorPoint=Vector2.new(0.5,0.5), ZIndex=Z.BASE }, {
+    new("UICorner",{CornerRadius=UDim.new(0,14)}), new("UIStroke",{Color=Theme.Stroke,Thickness=1,Transparency=0.25})
+  })
+  local header = new("Frame", { Parent=root, BackgroundColor3=Theme.Panel, Size=UDim2.new(1,0,0,50), ZIndex=Z.HEADER }, {
+    new("UICorner",{CornerRadius=UDim.new(0,14)}), new("UIStroke",{Color=Theme.Stroke,Thickness=1,Transparency=0.35}), new("UIPadding",{PaddingLeft=UDim.new(0,16),PaddingRight=UDim.new(0,12)})
+  })
+  new("TextLabel", { Parent=header, BackgroundTransparency=1, Size=UDim2.new(1,-120,1,0), Font=Enum.Font.GothamBold, TextSize=18, TextXAlignment=Enum.TextXAlignment.Left, TextColor3=Theme.Text, Text=tostring(opts.Name or "Acinonyx Script") })
+  local minimizeBtn = new("TextButton", { Parent=header, BackgroundTransparency=1, Size=UDim2.fromOffset(26,26), Position=UDim2.new(1,-60,0.5,-13), Text="–", TextScaled=true, Font=Enum.Font.GothamBold, TextColor3=Theme.Muted })
+  local closeBtn    = new("TextButton", { Parent=header, BackgroundTransparency=1, Size=UDim2.fromOffset(26,26), Position=UDim2.new(1,-28,0.5,-13), Text="×", TextScaled=true, Font=Enum.Font.GothamBold, TextColor3=Theme.Muted })
+
+  local body = new("Frame", { Parent=root, BackgroundColor3=Theme.Bg, Size=UDim2.new(1,0,1,-50), Position=UDim2.fromOffset(0,50), ZIndex=Z.CONTENT })
+  local sidebar = new("Frame", { Parent=body, BackgroundColor3=Theme.Panel, Size=UDim2.new(0,168,1,0), ZIndex=Z.TAB }, {
+    new("UIStroke",{Color=Theme.Stroke,Thickness=1,Transparency=0.35})
+  })
+  local tabList = new("Frame", { Parent=sidebar, BackgroundTransparency=1, Size=UDim2.new(1,0,1,-8), Position=UDim2.fromOffset(0,8), ZIndex=Z.TAB }, {
+    new("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0,8)}), new("UIPadding",{PaddingLeft=UDim.new(0,10),PaddingRight=UDim.new(0,10),PaddingTop=UDim.new(0,8)})
+  })
+  local content = new("Frame", { Parent=body, BackgroundColor3=Theme.Bg, Size=UDim2.new(1,-168,1,0), Position=UDim2.fromOffset(168,0), ZIndex=Z.CONTENT })
+
+  -- drag
+  do
+    local dragging, dragStart, start
+    header.InputBegan:Connect(function(i)
+      if i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=true; dragStart=i.Position; start=root.Position; i.Changed:Connect(function() if i.UserInputState==Enum.UserInputState.End then dragging=false end end) end
+    end)
+    UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType==Enum.UserInputType.MouseMovement then local d=i.Position-dragStart; root.Position=UDim2.new(start.X.Scale,start.X.Offset+d.X,start.Y.Scale,start.Y.Offset+d.Y) end end)
+  end
+  minimizeBtn.MouseButton1Click:Connect(function() local c=content.Visible; content.Visible=not c; tw(root,{Size=c and (opts.Size or UDim2.fromOffset(640,440)) or UDim2.fromOffset(root.Size.X.Offset,50)},0.2):Play() end)
+  closeBtn.MouseButton1Click:Connect(function() root.Visible=false end)
+
+  local Window = { _tabs = {}, _content = content, _tabList = tabList }
+
+  function Window:CreateTab(name, iconAssetId)
+    local btn = new("TextButton", { Parent=tabList, BackgroundColor3=Theme.Panel, Size=UDim2.new(1,0,0,38), AutoButtonColor=false, Text=tostring(name or "Tab"), Font=Enum.Font.GothamBold, TextSize=15, TextColor3=Theme.Muted, ZIndex=Z.TAB }, { new("UICorner",{CornerRadius=UDim.new(0,10)}), new("UIStroke",{Color=Theme.Stroke,Thickness=1,Transparency=0.4}) })
+    local page = new("ScrollingFrame", { Parent=content, BackgroundTransparency=1, Size=UDim2.fromScale(1,1), Visible=false, ScrollBarThickness=6, ScrollBarImageTransparency=0.6, ScrollBarImageColor3=Theme.Stroke, ZIndex=Z.CONTENT }, {
+      new("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0,12)}), new("UIPadding",{PaddingLeft=UDim.new(0,16),PaddingRight=UDim.new(0,16),PaddingTop=UDim.new(0,14),PaddingBottom=UDim.new(0,16)})
+    })
+
+    local function select()
+      for _,t in pairs(self._tabs) do t.page.Visible=false; t.btn.TextColor3=Theme.Muted; t.btn.BackgroundColor3=Theme.Panel end
+      page.Visible=true; btn.TextColor3=Theme.Text; btn.BackgroundColor3=Theme.Sel
+    end
+    btn.MouseButton1Click:Connect(select); if #self._tabs==0 then select() end
+
+    local TabObj = { _page = page }
+
+    function TabObj:CreateSection(title)
+      local section = new("Frame", { Parent=page, BackgroundColor3=Theme.Panel, Size=UDim2.new(1,0,0,48), AutomaticSize=Enum.AutomaticSize.Y, ZIndex=Z.CONTENT }, {
+        new("UICorner",{CornerRadius=UDim.new(0,12)}), new("UIStroke",{Color=Theme.Stroke,Thickness=1,Transparency=0.35}), new("UIPadding",{PaddingLeft=UDim.new(0,14),PaddingRight=UDim.new(0,14),PaddingTop=UDim.new(0,12),PaddingBottom=UDim.new(0,12)}), new("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0,10)})
+      })
+      new("TextLabel", { Parent=section, BackgroundTransparency=1, Size=UDim2.new(1,0,0,18), Font=Enum.Font.GothamBold, TextSize=14, TextColor3=Theme.Text, Text=tostring(title or "Section"), TextXAlignment=Enum.TextXAlignment.Left })
+      local Container = section
+
+      local function row(h)
+        return new("Frame", { Parent=Container, BackgroundTransparency=1, Size=UDim2.new(1,0,0,h or 34) }, { new("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal, Padding=UDim.new(0,8)}) })
+      end
+      local function nameRight(r, text)
+        new("TextLabel",{Parent=r,BackgroundTransparency=1,Size=UDim2.new(0.5,-8,1,0),Font=Enum.Font.Gotham,TextSize=14,TextColor3=Theme.Muted,Text=tostring(text or ""),TextXAlignment=Enum.TextXAlignment.Left})
+        local right=new("Frame",{Parent=r,BackgroundTransparency=1,Size=UDim2.new(0.5,-8,1,0)})
+        return right
+      end
+
+      -- Toggle
+      function TabObj:CreateToggle(o)
+        local r=row(34); local right=nameRight(r,o.Name)
+        local state = not not o.CurrentValue
+        local toggle = new("TextButton",{Parent=right,BackgroundColor3=state and Theme.Accent or Theme.Panel,Size=UDim2.new(0,58,1,-6),Position=UDim2.fromOffset(0,3),AutoButtonColor=false,Text=""},{new("UICorner",{CornerRadius=UDim.new(1,0)}),new("UIStroke",{Color=Theme.Stroke,Transparency=0.45})})
+        local knob=new("Frame",{Parent=toggle,BackgroundColor3=Color3.new(1,1,1),Size=UDim2.fromOffset(22,22),Position=UDim2.fromOffset(state and 34 or 2,2)},{new("UICorner",{CornerRadius=UDim.new(1,0)})})
+        local function set(v) state=not not v; tw(toggle,{BackgroundColor3=state and Theme.Accent or Theme.Panel},0.12):Play(); tw(knob,{Position=UDim2.fromOffset(state and 34 or 2,2)},0.12):Play(); cb(o.Callback,state) end
+        toggle.MouseButton1Click:Connect(function() set(not state) end)
+        if o.Callback then task.defer(o.Callback, state) end
+        local Obj = { Set = set }
+        return Obj
+      end
+
+      -- Button
+      function TabObj:CreateButton(o)
+        local r=row(34); nameRight(r,o.Name)
+        local b=new("TextButton",{Parent=r,BackgroundColor3=Theme.Accent,Size=UDim2.new(0.5,-8,1,0),Text=o.Name or "Button",Font=Enum.Font.GothamBold,TextSize=14,TextColor3=Color3.new(1,1,1),AutoButtonColor=false},{new("UICorner",{CornerRadius=UDim.new(0,8)})})
+        b.MouseButton1Click:Connect(function() tw(b,{BackgroundColor3=Theme.Accent2},0.08):Play(); cb(o.Callback); tw(b,{BackgroundColor3=Theme.Accent},0.18):Play() end)
+        return b
+      end
+
+      -- Slider
+      function TabObj:CreateSlider(o)
+        o.Range = o.Range or {0,100}; o.Increment = o.Increment or 1
+        local val = o.CurrentValue or o.Range[1]
+        local r=row(46)
+        local right=nameRight(r, (o.Name or "Slider") .. (o.Suffix and (" ("..o.Suffix..")") or ""))
+        local valL=new("TextLabel",{Parent=right,BackgroundTransparency=1,AnchorPoint=Vector2.new(1,0),Size=UDim2.fromOffset(60,18),Position=UDim2.new(1,0,0,0),Text=tostring(val),Font=Enum.Font.Gotham,TextSize=13,TextColor3=Theme.Text,TextXAlignment=Enum.TextXAlignment.Right})
+        local bar=new("Frame",{Parent=right,BackgroundColor3=Theme.Panel,Size=UDim2.new(1,-64,0,8),Position=UDim2.fromOffset(0,18)},{new("UICorner",{CornerRadius=UDim.new(1,0)}),new("UIStroke",{Color=Theme.Stroke,Transparency=0.5})})
+        local fill=new("Frame",{Parent=bar,BackgroundColor3=Theme.Accent,Size=UDim2.new((val-o.Range[1])/(o.Range[2]-o.Range[1]),0,1,0)},{new("UICorner",{CornerRadius=UDim.new(1,0)})})
+        local dragging=false
+        local function apply(px)
+          local a=bar.AbsolutePosition.X; local w=bar.AbsoluteSize.X
+          local t=math.clamp((px-a)/w,0,1)
+          local v=round(o.Range[1] + t*(o.Range[2]-o.Range[1]), o.Increment)
+          val=math.clamp(v,o.Range[1],o.Range[2])
+          fill.Size=UDim2.new((val-o.Range[1])/(o.Range[2]-o.Range[1]),0,1,0)
+          valL.Text=tostring(val)
+          cb(o.Callback,val)
+        end
+        bar.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=true; apply(i.Position.X) end end)
+        UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=false end end)
+        UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType==Enum.UserInputType.MouseMovement then apply(i.Position.X) end end)
+        if o.Callback then task.defer(o.Callback,val) end
+        return { Set = function(v) apply(bar.AbsolutePosition.X + (math.clamp(v,o.Range[1],o.Range[2]) - o.Range[1])/(o.Range[2]-o.Range[1])*bar.AbsoluteSize.X) end }
+      end
+
+      -- Dropdown (single select)
+      function TabObj:CreateDropdown(o)
+        o.Options=o.Options or {}; local selected=o.CurrentOption
+        local r=row(34); local right=nameRight(r,o.Name)
+        local holder=new("TextButton",{Parent=right,BackgroundColor3=Theme.Panel,AutoButtonColor=false,Size=UDim2.new(1,0,1,-6),Position=UDim2.fromOffset(0,3),Text=""},{new("UICorner",{CornerRadius=UDim.new(0,8)}),new("UIStroke",{Color=Theme.Stroke,Transparency=0.35})})
+        local text=new("TextLabel",{Parent=holder,BackgroundTransparency=1,Size=UDim2.new(1,-28,1,0),Position=UDim2.fromOffset(10,0),Font=Enum.Font.Gotham,TextSize=14,TextXAlignment=Enum.TextXAlignment.Left,TextColor3=Theme.Text,TextTruncate=Enum.TextTruncate.AtEnd,Text=tostring(selected or "Select...")})
+        new("TextLabel",{Parent=holder,BackgroundTransparency=1,Size=UDim2.fromOffset(20,20),Position=UDim2.new(1,-22,0.5,-10),Text="▼",TextColor3=Theme.Muted,Font=Enum.Font.GothamBold,TextSize=14})
+        local popup=new("Frame",{Parent=Root,BackgroundColor3=Theme.Panel,BorderSizePixel=0,Size=UDim2.fromOffset(holder.AbsoluteSize.X,0),Position=UDim2.fromOffset(0,0),Visible=false,ZIndex=Z.FLOAT},{new("UICorner",{CornerRadius=UDim.new(0,8)}),new("UIStroke",{Color=Theme.Stroke,Transparency=0.35}),new("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder})})
+        local function rebuild()
+          popup:ClearAllChildren(); new("UICorner",{CornerRadius=UDim.new(0,8),Parent=popup}); new("UIStroke",{Color=Theme.Stroke,Transparency=0.35,Parent=popup}); new("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,Parent=popup})
+          for _,opt in ipairs(o.Options) do
+            local item=new("TextButton",{Parent=popup,BackgroundColor3=Theme.Panel,AutoButtonColor=false,Size=UDim2.new(1,0,0,30),Text=tostring(opt),Font=Enum.Font.Gotham,TextSize=14,TextColor3=Theme.Text,ZIndex=Z.FLOAT})
+            item.MouseEnter:Connect(function() item.BackgroundColor3=Theme.Sel end)
+            item.MouseLeave:Connect(function() item.BackgroundColor3=Theme.Panel end)
+            item.MouseButton1Click:Connect(function() selected=opt; text.Text=tostring(opt); popup.Visible=false; cb(o.Callback,selected) end)
+          end
+          popup.Size=UDim2.fromOffset(holder.AbsoluteSize.X, math.min(#o.Options,8)*30)
+        end
+        rebuild()
+        holder.MouseButton1Click:Connect(function() if popup.Visible then popup.Visible=false return end local p=holder.AbsolutePosition; popup.Position=UDim2.fromOffset(p.X, p.Y+holder.AbsoluteSize.Y+4); popup.Visible=true end)
+        UserInputService.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 and popup.Visible then local m=UserInputService:GetMouseLocation(); local p=popup.AbsolutePosition; local s=popup.AbsoluteSize; local inside=(m.X>=p.X and m.X<=p.X+s.X and m.Y>=p.Y and m.Y<=p.Y+s.Y); if not inside then popup.Visible=false end end end)
+        if o.Callback and selected~=nil then task.defer(o.Callback,selected) end
+        return { Set=function(v) selected=v; text.Text=tostring(v); cb(o.Callback,v) end, Refresh=function(opts) o.Options=opts or {}; rebuild() end }
+      end
+
+      -- Input
+      function TabObj:CreateInput(o)
+        local r=row(34); local right=nameRight(r,o.Name)
+        local box=new("TextBox",{Parent=right,BackgroundColor3=Theme.Panel,Size=UDim2.new(1,0,1,-6),Position=UDim2.fromOffset(0,3),ClearTextOnFocus=false,PlaceholderText=tostring(o.PlaceholderText or ""),Font=Enum.Font.Gotham,TextSize=14,TextColor3=Theme.Text},{new("UICorner",{CornerRadius=UDim.new(0,8)}),new("UIStroke",{Color=Theme.Stroke,Transparency=0.35})})
+        if o.NumbersOnly then box:GetPropertyChangedSignal("Text"):Connect(function() box.Text=(box.Text:match("%d+")) or "" end) end
+        local function fire() cb(o.Callback, box.Text) end
+        if o.OnEnter then box.FocusLost:Connect(function(enter) if enter then if o.RemoveTextAfterFocusLost then local t=box.Text; box.Text=""; cb(o.Callback,t) else fire() end end end) else box.FocusLost:Connect(function() if o.RemoveTextAfterFocusLost then local t=box.Text; box.Text=""; cb(o.Callback,t) else fire() end end) end
+        return { Set=function(t) box.Text=tostring(t) end, Get=function() return box.Text end }
+      end
+
+      -- Keybind
+      function TabObj:CreateKeybind(o)
+        local r=row(34); local right=nameRight(r,o.Name)
+        local key=o.CurrentKeybind or Enum.KeyCode.LeftControl
+        local b=new("TextButton",{Parent=right,BackgroundColor3=Theme.Panel,Size=UDim2.new(1,0,1,-6),Position=UDim2.fromOffset(0,3),AutoButtonColor=false,Text=key.Name,Font=Enum.Font.Gotham,TextSize=14,TextColor3=Theme.Text},{new("UICorner",{CornerRadius=UDim.new(0,8)}),new("UIStroke",{Color=Theme.Stroke,Transparency=0.35})})
+        local listening=false
+        b.MouseButton1Click:Connect(function() listening=true; b.Text="Press a key..." end)
+        UserInputService.InputBegan:Connect(function(input,gpe) if listening and input.UserInputType==Enum.UserInputType.Keyboard then listening=false; key=input.KeyCode; b.Text=key.Name; cb(o.Callback,key) end end)
+        if o.Callback then task.defer(o.Callback,key) end
+        return { Set=function(k) key=k; b.Text=key.Name; cb(o.Callback,key) end }
+      end
+
+      -- Color Picker (RGB sliders, simple)
+      function TabObj:CreateColorPicker(o)
+        local r=row(68); local right=nameRight(r,o.Name)
+        local col=o.Color or Color3.fromRGB(255,255,255)
+        local sw=new("Frame",{Parent=right,BackgroundColor3=col,Size=UDim2.new(0,42,1,-6),Position=UDim2.fromOffset(0,3)},{new("UICorner",{CornerRadius=UDim.new(0,8)}),new("UIStroke",{Color=Theme.Stroke,Transparency=0.4})})
+        local sliders=new("Frame",{Parent=right,BackgroundTransparency=1,Size=UDim2.new(1,-50,1,0),Position=UDim2.fromOffset(50,0)},{new("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,6)})})
+        local function push() sw.BackgroundColor3=col; cb(o.Callback,col) end
+        local function mk(name,def)
+          local bar=new("Frame",{Parent=sliders,BackgroundColor3=Theme.Panel,Size=UDim2.new(1,0,0,8)},{new("UICorner",{CornerRadius=UDim.new(1,0)}),new("UIStroke",{Color=Theme.Stroke,Transparency=0.5})})
+          local fill=new("Frame",{Parent=bar,BackgroundColor3=Theme.Accent,Size=UDim2.new(def/255,0,1,0)},{new("UICorner",{CornerRadius=UDim.new(1,0)})})
+          local lab=new("TextLabel",{Parent=sliders,BackgroundTransparency=1,Size=UDim2.new(1,0,0,14),Font=Enum.Font.Gotham,TextSize=13,TextColor3=Theme.Muted,Text=name..": "..def,TextXAlignment=Enum.TextXAlignment.Left})
+          local dragging=false
+          local function apply(px)
+            local a=bar.AbsolutePosition.X; local w=bar.AbsoluteSize.X
+            local t=math.clamp((px-a)/w,0,1); local v=math.floor(t*255+0.5)
+            lab.Text=name..": "..v; fill.Size=UDim2.new(v/255,0,1,0)
+            if name=="R" then col=Color3.fromRGB(v, col.G*255, col.B*255) elseif name=="G" then col=Color3.fromRGB(col.R*255, v, col.B*255) else col=Color3.fromRGB(col.R*255, col.G*255, v) end
+            push()
+          end
+          bar.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=true; apply(i.Position.X) end end)
+          UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then dragging=false end end)
+          UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType==Enum.UserInputType.MouseMovement then apply(i.Position.X) end end)
+        end
+        local r0,g0,b0=math.floor(col.R*255+0.5),math.floor(col.G*255+0.5),math.floor(col.B*255+0.5)
+        mk("R",r0); mk("G",g0); mk("B",b0)
+        if o.Callback then task.defer(o.Callback,col) end
+        return { Set=function(v) col=v; push() end }
+      end
+
+      -- Paragraph
+      function TabObj:CreateParagraph(o)
+        local r=row(70)
+        local card=new("Frame",{Parent=r,BackgroundColor3=Theme.Panel,Size=UDim2.new(1,0,1,0)},{new("UICorner",{CornerRadius=UDim.new(0,10)}),new("UIStroke",{Color=Theme.Stroke,Transparency=0.35}),new("UIPadding",{PaddingLeft=UDim.new(0,10),PaddingTop=UDim.new(0,8),PaddingRight=UDim.new(0,10),PaddingBottom=UDim.new(0,8)}),new("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,4)})})
+        new("TextLabel",{Parent=card,BackgroundTransparency=1,Size=UDim2.new(1,0,0,18),Font=Enum.Font.GothamBold,TextSize=14,TextColor3=Theme.Text,Text=tostring(o.Title or "Paragraph"),TextXAlignment=Enum.TextXAlignment.Left})
+        new("TextLabel",{Parent=card,BackgroundTransparency=1,Size=UDim2.new(1,0,1,-22),Font=Enum.Font.Gotham,TextSize=13,TextWrapped=true,TextColor3=Theme.Muted,Text=tostring(o.Content or ""),TextXAlignment=Enum.TextXAlignment.Left,TextYAlignment=Enum.TextYAlignment.Top})
+      end
+
+      return TabObj
+    end
+
+    table.insert(self._tabs, { btn = btn, page = page })
+    return TabObj
+  end
+
+  return Window
+end
+
+-- Public API table named like Rayfield
+local Rayfield = {}
+function Rayfield:CreateWindow(opts) return createWindow(opts) end
+function Rayfield:Notify(o) return notify(o or {}) end
+-- Stubs for compatibility
+function Rayfield:Destroy() if Root then Root:Destroy() end end
+
+return Rayfield
