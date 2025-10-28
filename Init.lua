@@ -53,6 +53,169 @@ local function MakeDraggable(frame, handle)
     end)
 end
 
+-- Notification System
+local NotificationHolder = nil
+local ActiveNotifications = {}
+
+local function CreateNotification(title, text, duration, notifType)
+    duration = duration or 3
+    notifType = notifType or "info" -- info, success, warning, error
+    
+    -- Create notification holder if it doesn't exist
+    if not NotificationHolder or not NotificationHolder.Parent then
+        local NotifGui = Instance.new("ScreenGui")
+        NotifGui.Name = "AcinonyxNotifications"
+        NotifGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        NotifGui.ResetOnSpawn = false
+        NotifGui.DisplayOrder = 999
+        
+        if syn then
+            syn.protect_gui(NotifGui)
+            NotifGui.Parent = CoreGui
+        else
+            NotifGui.Parent = CoreGui
+        end
+        
+        NotificationHolder = Instance.new("Frame")
+        NotificationHolder.Name = "NotificationHolder"
+        NotificationHolder.Size = UDim2.new(0, 300, 1, -20)
+        NotificationHolder.Position = UDim2.new(1, -310, 0, 10)
+        NotificationHolder.BackgroundTransparency = 1
+        NotificationHolder.Parent = NotifGui
+        
+        local NotifLayout = Instance.new("UIListLayout")
+        NotifLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        NotifLayout.Padding = UDim.new(0, 10)
+        NotifLayout.Parent = NotificationHolder
+    end
+    
+    -- Color based on type
+    local accentColor = Color3.fromRGB(60, 120, 220) -- info
+    if notifType == "success" then
+        accentColor = Color3.fromRGB(80, 200, 120)
+    elseif notifType == "warning" then
+        accentColor = Color3.fromRGB(255, 180, 60)
+    elseif notifType == "error" then
+        accentColor = Color3.fromRGB(220, 80, 80)
+    end
+    
+    -- Notification Frame
+    local NotifFrame = Instance.new("Frame")
+    NotifFrame.Size = UDim2.new(1, 0, 0, 0)
+    NotifFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    NotifFrame.BackgroundTransparency = 0.2
+    NotifFrame.BorderSizePixel = 0
+    NotifFrame.ClipsDescendants = true
+    NotifFrame.Parent = NotificationHolder
+    
+    local NotifCorner = Instance.new("UICorner")
+    NotifCorner.CornerRadius = UDim.new(0, 8)
+    NotifCorner.Parent = NotifFrame
+    
+    -- Accent Bar
+    local AccentBar = Instance.new("Frame")
+    AccentBar.Size = UDim2.new(0, 4, 1, 0)
+    AccentBar.BackgroundColor3 = accentColor
+    AccentBar.BorderSizePixel = 0
+    AccentBar.Parent = NotifFrame
+    
+    local AccentCorner = Instance.new("UICorner")
+    AccentCorner.CornerRadius = UDim.new(0, 8)
+    AccentCorner.Parent = AccentBar
+    
+    -- Content Container
+    local ContentFrame = Instance.new("Frame")
+    ContentFrame.Size = UDim2.new(1, -14, 1, 0)
+    ContentFrame.Position = UDim2.new(0, 10, 0, 0)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.Parent = NotifFrame
+    
+    -- Title
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Size = UDim2.new(1, -35, 0, 20)
+    TitleLabel.Position = UDim2.new(0, 5, 0, 8)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = title
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextSize = 14
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    TitleLabel.Parent = ContentFrame
+    
+    -- Description
+    local DescLabel = Instance.new("TextLabel")
+    DescLabel.Size = UDim2.new(1, -10, 0, 35)
+    DescLabel.Position = UDim2.new(0, 5, 0, 28)
+    DescLabel.BackgroundTransparency = 1
+    DescLabel.Text = text
+    DescLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    DescLabel.TextSize = 12
+    DescLabel.Font = Enum.Font.Gotham
+    DescLabel.TextXAlignment = Enum.TextXAlignment.Left
+    DescLabel.TextYAlignment = Enum.TextYAlignment.Top
+    DescLabel.TextWrapped = true
+    DescLabel.Parent = ContentFrame
+    
+    -- Close Button
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Size = UDim2.new(0, 20, 0, 20)
+    CloseBtn.Position = UDim2.new(1, -25, 0, 8)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    CloseBtn.BackgroundTransparency = 0.3
+    CloseBtn.BorderSizePixel = 0
+    CloseBtn.Text = "×"
+    CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    CloseBtn.TextSize = 16
+    CloseBtn.Font = Enum.Font.GothamBold
+    CloseBtn.Parent = ContentFrame
+    
+    local CloseBtnCorner = Instance.new("UICorner")
+    CloseBtnCorner.CornerRadius = UDim.new(0, 4)
+    CloseBtnCorner.Parent = CloseBtn
+    
+    -- Progress Bar
+    local ProgressBar = Instance.new("Frame")
+    ProgressBar.Size = UDim2.new(1, -14, 0, 2)
+    ProgressBar.Position = UDim2.new(0, 7, 1, -4)
+    ProgressBar.BackgroundColor3 = accentColor
+    ProgressBar.BorderSizePixel = 0
+    ProgressBar.Parent = NotifFrame
+    
+    local ProgressCorner = Instance.new("UICorner")
+    ProgressCorner.CornerRadius = UDim.new(1, 0)
+    ProgressCorner.Parent = ProgressBar
+    
+    -- Animation
+    NotifFrame.Size = UDim2.new(1, 0, 0, 75)
+    NotifFrame.BackgroundTransparency = 1
+    
+    Tween(NotifFrame, {BackgroundTransparency = 0.2}, 0.3)
+    
+    -- Auto close
+    local function CloseNotification()
+        Tween(NotifFrame, {BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0)}, 0.3)
+        wait(0.3)
+        NotifFrame:Destroy()
+    end
+    
+    CloseBtn.MouseEnter:Connect(function()
+        Tween(CloseBtn, {BackgroundColor3 = Color3.fromRGB(220, 80, 80), BackgroundTransparency = 0})
+    end)
+    
+    CloseBtn.MouseLeave:Connect(function()
+        Tween(CloseBtn, {BackgroundColor3 = Color3.fromRGB(40, 40, 50), BackgroundTransparency = 0.3})
+    end)
+    
+    CloseBtn.MouseButton1Click:Connect(CloseNotification)
+    
+    -- Progress bar animation
+    Tween(ProgressBar, {Size = UDim2.new(0, 0, 0, 2)}, duration)
+    
+    -- Auto dismiss
+    task.delay(duration, CloseNotification)
+end
+
 -- Main Library Functions
 function Acinonyx:CreateWindow(config)
     config = config or {}
@@ -123,7 +286,7 @@ function Acinonyx:CreateWindow(config)
     -- Close Button
     local CloseButton = Instance.new("TextButton")
     CloseButton.Name = "CloseButton"
-    CloseButton.Size = UDim2.new(0, 35, 0, 35)
+    CloseButton.Size = UDim2.new(0, 25, 0, 25)
     CloseButton.Position = UDim2.new(1, -40, 0, 0)
     CloseButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     CloseButton.BackgroundTransparency = 0.3
@@ -193,6 +356,17 @@ function Acinonyx:CreateWindow(config)
         Tabs = {},
         CurrentTab = nil
     }
+    
+    -- Notification Method
+    function Window:Notify(config)
+        config = config or {}
+        local title = config.Title or "Notification"
+        local text = config.Text or "No message provided"
+        local duration = config.Duration or 3
+        local notifType = config.Type or "info" -- info, success, warning, error
+        
+        CreateNotification(title, text, duration, notifType)
+    end
     
     function Window:CreateTab(tabName)
         local Tab = {}
