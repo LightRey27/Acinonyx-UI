@@ -123,7 +123,7 @@ function Acinonyx:CreateWindow(config)
     -- Close Button
     local CloseButton = Instance.new("TextButton")
     CloseButton.Name = "CloseButton"
-    CloseButton.Size = UDim2.new(0, 40, 0, 40)
+    CloseButton.Size = UDim2.new(0, 35, 0, 35)
     CloseButton.Position = UDim2.new(1, -40, 0, 0)
     CloseButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     CloseButton.BackgroundTransparency = 0.3
