@@ -213,6 +213,13 @@ function Acinonyx:CreateWindow(config)
     local windowName = config.Name or "Acinonyx"
     local windowSize = config.Size or UDim2.new(0, 550, 0, 400)
     
+    -- Clean up old instances
+    for _, gui in pairs(CoreGui:GetChildren()) do
+        if gui.Name == "AcinonyxUI" then
+            gui:Destroy()
+        end
+    end
+    
     -- Main ScreenGui
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "AcinonyxUI"
