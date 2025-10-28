@@ -211,7 +211,21 @@ end
 function Acinonyx:CreateWindow(config)
     config = config or {}
     local windowName = config.Name or "Acinonyx"
-    local windowSize = config.Size or UDim2.new(0, 550, 0, 400)
+    
+    -- Get viewport size for responsive scaling
+    local ViewportSize = workspace.CurrentCamera.ViewportSize
+    local screenWidth = ViewportSize.X
+    local screenHeight = ViewportSize.Y
+    
+    -- Default size as percentage of screen (or use custom size if provided)
+    local defaultWidth = math.floor(screenWidth * 0.4) -- 40% of screen width
+    local defaultHeight = math.floor(screenHeight * 0.5) -- 50% of screen height
+    
+    -- Clamp to min/max values
+    defaultWidth = math.clamp(defaultWidth, 500, 800)
+    defaultHeight = math.clamp(defaultHeight, 400, 600)
+    
+    local windowSize = config.Size or UDim2.new(0, defaultWidth, 0, defaultHeight)
     
     -- Clean up old instances
     for _, gui in pairs(CoreGui:GetChildren()) do
@@ -326,7 +340,19 @@ function Acinonyx:CreateWindow(config)
     end)
     
     CloseButton.MouseButton1Click:Connect(function()
-        Tween(MainFrame, {Size = UDim2.new(0, 0, 0, 0)})
+        -- Fade out animation instead of resize
+        Tween(MainFrame, {BackgroundTransparency = 1})
+        for _, child in pairs(MainFrame:GetDescendants()) do
+            if child:IsA("GuiObject") then
+                Tween(child, {BackgroundTransparency = 1})
+            end
+            if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
+                Tween(child, {TextTransparency = 1})
+            end
+            if child:IsA("ImageLabel") or child:IsA("ImageButton") then
+                Tween(child, {ImageTransparency = 1})
+            end
+        end
         wait(0.3)
         ScreenGui:Destroy()
     end)
