@@ -368,7 +368,7 @@ function Acinonyx:CreateWindow(config)
     -- Minimize Overlay
     local MinimizeOverlay = Instance.new("ImageButton")
     MinimizeOverlay.Name = "MinimizeOverlay"
-    MinimizeOverlay.Size = UDim2.new(0, 80, 0, 80)
+    MinimizeOverlay.Size = UDim2.new(0, 40, 0, 40)
     MinimizeOverlay.Position = UDim2.new(1, -90, 1, -90)
     MinimizeOverlay.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
     MinimizeOverlay.BackgroundTransparency = 0.2
