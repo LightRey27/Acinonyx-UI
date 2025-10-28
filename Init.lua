@@ -78,6 +78,7 @@ function Acinonyx:CreateWindow(config)
     MainFrame.Size = windowSize
     MainFrame.Position = UDim2.new(0.5, -windowSize.X.Offset/2, 0.5, -windowSize.Y.Offset/2)
     MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    MainFrame.BackgroundTransparency = 0.3
     MainFrame.BorderSizePixel = 0
     MainFrame.Parent = ScreenGui
     
@@ -85,23 +86,12 @@ function Acinonyx:CreateWindow(config)
     MainCorner.CornerRadius = UDim.new(0, 10)
     MainCorner.Parent = MainFrame
     
-    -- Shadow Effect
-    local Shadow = Instance.new("ImageLabel")
-    Shadow.Name = "Shadow"
-    Shadow.Size = UDim2.new(1, 30, 1, 30)
-    Shadow.Position = UDim2.new(0, -15, 0, -15)
-    Shadow.BackgroundTransparency = 1
-    Shadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
-    Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-    Shadow.ImageTransparency = 0.5
-    Shadow.ZIndex = 0
-    Shadow.Parent = MainFrame
-    
     -- Top Bar
     local TopBar = Instance.new("Frame")
     TopBar.Name = "TopBar"
     TopBar.Size = UDim2.new(1, 0, 0, 40)
     TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    TopBar.BackgroundTransparency = 0.3
     TopBar.BorderSizePixel = 0
     TopBar.Parent = MainFrame
     
@@ -113,6 +103,7 @@ function Acinonyx:CreateWindow(config)
     TopBarFix.Size = UDim2.new(1, 0, 0, 10)
     TopBarFix.Position = UDim2.new(0, 0, 1, -10)
     TopBarFix.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    TopBarFix.BackgroundTransparency = 0.3
     TopBarFix.BorderSizePixel = 0
     TopBarFix.Parent = TopBar
     
@@ -135,6 +126,7 @@ function Acinonyx:CreateWindow(config)
     CloseButton.Size = UDim2.new(0, 40, 0, 40)
     CloseButton.Position = UDim2.new(1, -40, 0, 0)
     CloseButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    CloseButton.BackgroundTransparency = 0.3
     CloseButton.BorderSizePixel = 0
     CloseButton.Text = "×"
     CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -143,11 +135,11 @@ function Acinonyx:CreateWindow(config)
     CloseButton.Parent = TopBar
     
     CloseButton.MouseEnter:Connect(function()
-        Tween(CloseButton, {BackgroundColor3 = Color3.fromRGB(220, 50, 50)})
+        Tween(CloseButton, {BackgroundColor3 = Color3.fromRGB(220, 50, 50), BackgroundTransparency = 0})
     end)
     
     CloseButton.MouseLeave:Connect(function()
-        Tween(CloseButton, {BackgroundColor3 = Color3.fromRGB(30, 30, 35)})
+        Tween(CloseButton, {BackgroundColor3 = Color3.fromRGB(30, 30, 35), BackgroundTransparency = 0.3})
     end)
     
     CloseButton.MouseButton1Click:Connect(function()
@@ -162,6 +154,7 @@ function Acinonyx:CreateWindow(config)
     TabContainer.Size = UDim2.new(0, 120, 1, -50)
     TabContainer.Position = UDim2.new(0, 10, 0, 45)
     TabContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    TabContainer.BackgroundTransparency = 0.3
     TabContainer.BorderSizePixel = 0
     TabContainer.Parent = MainFrame
     
@@ -209,6 +202,7 @@ function Acinonyx:CreateWindow(config)
         TabButton.Name = tabName
         TabButton.Size = UDim2.new(1, 0, 0, 35)
         TabButton.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+        TabButton.BackgroundTransparency = 0.3
         TabButton.BorderSizePixel = 0
         TabButton.Text = tabName
         TabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -252,11 +246,13 @@ function Acinonyx:CreateWindow(config)
         TabButton.MouseButton1Click:Connect(function()
             for _, tab in pairs(Window.Tabs) do
                 tab.Button.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+                tab.Button.BackgroundTransparency = 0.3
                 tab.Button.TextColor3 = Color3.fromRGB(200, 200, 200)
                 tab.Content.Visible = false
             end
             
             TabButton.BackgroundColor3 = Color3.fromRGB(60, 120, 220)
+            TabButton.BackgroundTransparency = 0.2
             TabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
             TabContent.Visible = true
             Window.CurrentTab = Tab
@@ -276,6 +272,7 @@ function Acinonyx:CreateWindow(config)
             Button.Name = "Button"
             Button.Size = UDim2.new(1, 0, 0, 35)
             Button.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+            Button.BackgroundTransparency = 0.3
             Button.BorderSizePixel = 0
             Button.Text = buttonText
             Button.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -288,11 +285,11 @@ function Acinonyx:CreateWindow(config)
             ButtonCorner.Parent = Button
             
             Button.MouseEnter:Connect(function()
-                Tween(Button, {BackgroundColor3 = Color3.fromRGB(60, 120, 220)})
+                Tween(Button, {BackgroundColor3 = Color3.fromRGB(60, 120, 220), BackgroundTransparency = 0.2})
             end)
             
             Button.MouseLeave:Connect(function()
-                Tween(Button, {BackgroundColor3 = Color3.fromRGB(40, 40, 50)})
+                Tween(Button, {BackgroundColor3 = Color3.fromRGB(40, 40, 50), BackgroundTransparency = 0.3})
             end)
             
             Button.MouseButton1Click:Connect(callback)
@@ -310,6 +307,7 @@ function Acinonyx:CreateWindow(config)
             ToggleFrame.Name = "ToggleFrame"
             ToggleFrame.Size = UDim2.new(1, 0, 0, 35)
             ToggleFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+            ToggleFrame.BackgroundTransparency = 0.3
             ToggleFrame.BorderSizePixel = 0
             ToggleFrame.Parent = TabContent
             
@@ -377,6 +375,7 @@ function Acinonyx:CreateWindow(config)
             SliderFrame.Name = "SliderFrame"
             SliderFrame.Size = UDim2.new(1, 0, 0, 50)
             SliderFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+            SliderFrame.BackgroundTransparency = 0.3
             SliderFrame.BorderSizePixel = 0
             SliderFrame.Parent = TabContent
             
@@ -476,6 +475,7 @@ function Acinonyx:CreateWindow(config)
             TextboxFrame.Name = "TextboxFrame"
             TextboxFrame.Size = UDim2.new(1, 0, 0, 60)
             TextboxFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+            TextboxFrame.BackgroundTransparency = 0.3
             TextboxFrame.BorderSizePixel = 0
             TextboxFrame.Parent = TabContent
             
@@ -498,6 +498,7 @@ function Acinonyx:CreateWindow(config)
             Textbox.Size = UDim2.new(1, -20, 0, 25)
             Textbox.Position = UDim2.new(0, 10, 0, 28)
             Textbox.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+            Textbox.BackgroundTransparency = 0.3
             Textbox.BorderSizePixel = 0
             Textbox.PlaceholderText = placeholder
             Textbox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
@@ -531,6 +532,7 @@ function Acinonyx:CreateWindow(config)
             Label.Name = "Label"
             Label.Size = UDim2.new(1, 0, 0, 30)
             Label.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+            Label.BackgroundTransparency = 0.3
             Label.BorderSizePixel = 0
             Label.Text = text
             Label.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -560,6 +562,7 @@ function Acinonyx:CreateWindow(config)
             DropdownFrame.Name = "DropdownFrame"
             DropdownFrame.Size = UDim2.new(1, 0, 0, 35)
             DropdownFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+            DropdownFrame.BackgroundTransparency = 0.3
             DropdownFrame.BorderSizePixel = 0
             DropdownFrame.ClipsDescendants = true
             DropdownFrame.Parent = TabContent
@@ -608,6 +611,7 @@ function Acinonyx:CreateWindow(config)
                 local OptionButton = Instance.new("TextButton")
                 OptionButton.Size = UDim2.new(1, 0, 0, 30)
                 OptionButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+                OptionButton.BackgroundTransparency = 0.2
                 OptionButton.BorderSizePixel = 0
                 OptionButton.Text = option
                 OptionButton.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -621,11 +625,11 @@ function Acinonyx:CreateWindow(config)
                 OptionPadding.Parent = OptionButton
                 
                 OptionButton.MouseEnter:Connect(function()
-                    Tween(OptionButton, {BackgroundColor3 = Color3.fromRGB(60, 120, 220)})
+                    Tween(OptionButton, {BackgroundColor3 = Color3.fromRGB(60, 120, 220), BackgroundTransparency = 0.1})
                 end)
                 
                 OptionButton.MouseLeave:Connect(function()
-                    Tween(OptionButton, {BackgroundColor3 = Color3.fromRGB(35, 35, 40)})
+                    Tween(OptionButton, {BackgroundColor3 = Color3.fromRGB(35, 35, 40), BackgroundTransparency = 0.2})
                 end)
                 
                 OptionButton.MouseButton1Click:Connect(function()
@@ -658,6 +662,7 @@ function Acinonyx:CreateWindow(config)
         -- Auto-select first tab
         if #Window.Tabs == 1 then
             TabButton.BackgroundColor3 = Color3.fromRGB(60, 120, 220)
+            TabButton.BackgroundTransparency = 0.2
             TabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
             TabContent.Visible = true
             Window.CurrentTab = Tab
