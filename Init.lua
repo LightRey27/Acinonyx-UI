@@ -383,7 +383,7 @@ function Acinonyx:CreateWindow(config)
     local MinimizeOverlay = Instance.new("ImageButton")
     MinimizeOverlay.Name = "MinimizeOverlay"
     MinimizeOverlay.Size = UDim2.new(0, 40, 0, 40)
-    MinimizeOverlay.Position = UDim2.new(1, -90, 1, -90)
+    MinimizeOverlay.Position = UDim2.new(0, 20, 0, 180) -- Top-left corner
     MinimizeOverlay.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
     MinimizeOverlay.BackgroundTransparency = 0.2
     MinimizeOverlay.BorderSizePixel = 0
@@ -417,7 +417,7 @@ function Acinonyx:CreateWindow(config)
         MainFrame.Visible = false
         MinimizeOverlay.Visible = true
         MinimizeOverlay.Size = UDim2.new(0, 0, 0, 0)
-        Tween(MinimizeOverlay, {Size = UDim2.new(0, 80, 0, 80)}, 0.3)
+        Tween(MinimizeOverlay, {Size = UDim2.new(0, 40, 0, 40)}, 0.3)
     end)
     
     MinimizeOverlay.MouseButton1Click:Connect(function()
@@ -434,12 +434,12 @@ function Acinonyx:CreateWindow(config)
     end)
     
     MinimizeOverlay.MouseEnter:Connect(function()
-        Tween(MinimizeOverlay, {Size = UDim2.new(0, 85, 0, 85)}, 0.2)
+        Tween(MinimizeOverlay, {Size = UDim2.new(0, 45, 0, 45)}, 0.2)
         Tween(OverlayStroke, {Transparency = 0}, 0.2)
     end)
     
     MinimizeOverlay.MouseLeave:Connect(function()
-        Tween(MinimizeOverlay, {Size = UDim2.new(0, 80, 0, 80)}, 0.2)
+        Tween(MinimizeOverlay, {Size = UDim2.new(0, 40, 0, 40)}, 0.2)
         Tween(OverlayStroke, {Transparency = 0.5}, 0.2)
     end)
     
