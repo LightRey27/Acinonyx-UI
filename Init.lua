@@ -393,18 +393,22 @@ function Acinonyx:CreateWindow(config)
     
     MinimizeButton.MouseButton1Click:Connect(function()
         isMinimized = true
-        Tween(MainFrame, {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1})
+        MainFrame.Visible = false
         MinimizeOverlay.Visible = true
-        Tween(MinimizeOverlay, {Size = UDim2.new(0, 80, 0, 80), BackgroundTransparency = 0.2}, 0.3)
+        MinimizeOverlay.Size = UDim2.new(0, 0, 0, 0)
+        Tween(MinimizeOverlay, {Size = UDim2.new(0, 80, 0, 80)}, 0.3)
     end)
     
     MinimizeOverlay.MouseButton1Click:Connect(function()
         if isMinimized then
             isMinimized = false
+            Tween(MinimizeOverlay, {Size = UDim2.new(0, 0, 0, 0)}, 0.2)
+            task.wait(0.2)
             MinimizeOverlay.Visible = false
+            MainFrame.Visible = true
             MainFrame.Size = UDim2.new(0, 0, 0, 0)
             MainFrame.Position = UDim2.new(0.5, -windowSize.X.Offset/2, 0.5, -windowSize.Y.Offset/2)
-            Tween(MainFrame, {Size = windowSize, BackgroundTransparency = 0.3}, 0.3)
+            Tween(MainFrame, {Size = windowSize}, 0.3)
         end
     end)
     
