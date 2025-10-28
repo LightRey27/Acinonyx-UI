@@ -657,6 +657,173 @@ function Acinonyx:CreateWindow(config)
             return DropdownFrame
         end
         
+        function Tab:CreateMultiDropdown(config)
+            config = config or {}
+            local dropdownText = config.Text or "Multi Dropdown"
+            local options = config.Options or {}
+            local default = config.Default or {}
+            local callback = config.Callback or function() end
+            
+            local selected = {}
+            for _, v in ipairs(default) do
+                selected[v] = true
+            end
+            
+            local DropdownFrame = Instance.new("Frame")
+            DropdownFrame.Name = "MultiDropdownFrame"
+            DropdownFrame.Size = UDim2.new(1, 0, 0, 35)
+            DropdownFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+            DropdownFrame.BackgroundTransparency = 0.3
+            DropdownFrame.BorderSizePixel = 0
+            DropdownFrame.ClipsDescendants = true
+            DropdownFrame.Parent = TabContent
+            
+            local DropdownCorner = Instance.new("UICorner")
+            DropdownCorner.CornerRadius = UDim.new(0, 6)
+            DropdownCorner.Parent = DropdownFrame
+            
+            local DropdownButton = Instance.new("TextButton")
+            DropdownButton.Size = UDim2.new(1, 0, 0, 35)
+            DropdownButton.BackgroundTransparency = 1
+            DropdownButton.Text = dropdownText
+            DropdownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            DropdownButton.TextSize = 14
+            DropdownButton.Font = Enum.Font.Gotham
+            DropdownButton.TextXAlignment = Enum.TextXAlignment.Left
+            DropdownButton.Parent = DropdownFrame
+            
+            local DropdownPadding = Instance.new("UIPadding")
+            DropdownPadding.PaddingLeft = UDim.new(0, 10)
+            DropdownPadding.Parent = DropdownButton
+            
+            local Arrow = Instance.new("TextLabel")
+            Arrow.Size = UDim2.new(0, 20, 0, 35)
+            Arrow.Position = UDim2.new(1, -30, 0, 0)
+            Arrow.BackgroundTransparency = 1
+            Arrow.Text = "▼"
+            Arrow.TextColor3 = Color3.fromRGB(200, 200, 200)
+            Arrow.TextSize = 12
+            Arrow.Font = Enum.Font.Gotham
+            Arrow.Parent = DropdownFrame
+            
+            local OptionList = Instance.new("Frame")
+            OptionList.Size = UDim2.new(1, 0, 0, #options * 30)
+            OptionList.Position = UDim2.new(0, 0, 0, 35)
+            OptionList.BackgroundTransparency = 1
+            OptionList.Parent = DropdownFrame
+            
+            local OptionLayout = Instance.new("UIListLayout")
+            OptionLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            OptionLayout.Parent = OptionList
+            
+            local isOpen = false
+            
+            local function UpdateText()
+                local selectedList = {}
+                for option, isSelected in pairs(selected) do
+                    if isSelected then
+                        table.insert(selectedList, option)
+                    end
+                end
+                
+                if #selectedList > 0 then
+                    DropdownButton.Text = dropdownText .. ": " .. table.concat(selectedList, ", ")
+                else
+                    DropdownButton.Text = dropdownText
+                end
+            end
+            
+            for _, option in ipairs(options) do
+                local OptionButton = Instance.new("TextButton")
+                OptionButton.Size = UDim2.new(1, -25, 0, 30)
+                OptionButton.Position = UDim2.new(0, 0, 0, 0)
+                OptionButton.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+                OptionButton.BackgroundTransparency = 0.2
+                OptionButton.BorderSizePixel = 0
+                OptionButton.Text = option
+                OptionButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+                OptionButton.TextSize = 13
+                OptionButton.Font = Enum.Font.Gotham
+                OptionButton.TextXAlignment = Enum.TextXAlignment.Left
+                OptionButton.Parent = OptionList
+                
+                local OptionPadding = Instance.new("UIPadding")
+                OptionPadding.PaddingLeft = UDim.new(0, 10)
+                OptionPadding.Parent = OptionButton
+                
+                -- Checkbox indicator
+                local Checkbox = Instance.new("Frame")
+                Checkbox.Size = UDim2.new(0, 16, 0, 16)
+                Checkbox.Position = UDim2.new(1, -20, 0.5, -8)
+                Checkbox.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+                Checkbox.BorderSizePixel = 0
+                Checkbox.Parent = OptionButton
+                
+                local CheckboxCorner = Instance.new("UICorner")
+                CheckboxCorner.CornerRadius = UDim.new(0, 3)
+                CheckboxCorner.Parent = Checkbox
+                
+                local Checkmark = Instance.new("TextLabel")
+                Checkmark.Size = UDim2.new(1, 0, 1, 0)
+                Checkmark.BackgroundTransparency = 1
+                Checkmark.Text = "✓"
+                Checkmark.TextColor3 = Color3.fromRGB(255, 255, 255)
+                Checkmark.TextSize = 14
+                Checkmark.Font = Enum.Font.GothamBold
+                Checkmark.Visible = selected[option] or false
+                Checkmark.Parent = Checkbox
+                
+                if selected[option] then
+                    Checkbox.BackgroundColor3 = Color3.fromRGB(60, 120, 220)
+                end
+                
+                OptionButton.MouseEnter:Connect(function()
+                    Tween(OptionButton, {BackgroundColor3 = Color3.fromRGB(45, 45, 55), BackgroundTransparency = 0.1})
+                end)
+                
+                OptionButton.MouseLeave:Connect(function()
+                    Tween(OptionButton, {BackgroundColor3 = Color3.fromRGB(35, 35, 40), BackgroundTransparency = 0.2})
+                end)
+                
+                OptionButton.MouseButton1Click:Connect(function()
+                    selected[option] = not selected[option]
+                    Checkmark.Visible = selected[option]
+                    
+                    if selected[option] then
+                        Tween(Checkbox, {BackgroundColor3 = Color3.fromRGB(60, 120, 220)})
+                    else
+                        Tween(Checkbox, {BackgroundColor3 = Color3.fromRGB(60, 60, 70)})
+                    end
+                    
+                    UpdateText()
+                    
+                    local selectedList = {}
+                    for opt, isSelected in pairs(selected) do
+                        if isSelected then
+                            table.insert(selectedList, opt)
+                        end
+                    end
+                    callback(selectedList)
+                end)
+            end
+            
+            DropdownButton.MouseButton1Click:Connect(function()
+                isOpen = not isOpen
+                
+                if isOpen then
+                    Tween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 35 + #options * 30)})
+                    Tween(Arrow, {Rotation = 180})
+                else
+                    Tween(DropdownFrame, {Size = UDim2.new(1, 0, 0, 35)})
+                    Tween(Arrow, {Rotation = 0})
+                end
+            end)
+            
+            UpdateText()
+            
+            return DropdownFrame
+        end
+        
         Window.Tabs[tabName] = Tab
         
         -- Auto-select first tab
