@@ -79,13 +79,15 @@ local function CreateNotification(title, text, duration, notifType)
         NotificationHolder = Instance.new("Frame")
         NotificationHolder.Name = "NotificationHolder"
         NotificationHolder.Size = UDim2.new(0, 300, 1, -20)
-        NotificationHolder.Position = UDim2.new(1, -310, 0, 10)
+        NotificationHolder.Position = UDim2.new(1, -310, 1, -20)
+        NotificationHolder.AnchorPoint = Vector2.new(0, 1)
         NotificationHolder.BackgroundTransparency = 1
         NotificationHolder.Parent = NotifGui
         
         local NotifLayout = Instance.new("UIListLayout")
         NotifLayout.SortOrder = Enum.SortOrder.LayoutOrder
         NotifLayout.Padding = UDim.new(0, 10)
+        NotifLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
         NotifLayout.Parent = NotificationHolder
     end
     
@@ -112,20 +114,9 @@ local function CreateNotification(title, text, duration, notifType)
     NotifCorner.CornerRadius = UDim.new(0, 8)
     NotifCorner.Parent = NotifFrame
     
-    -- Accent Bar
-    local AccentBar = Instance.new("Frame")
-    AccentBar.Size = UDim2.new(0, 4, 1, 0)
-    AccentBar.BackgroundColor3 = accentColor
-    AccentBar.BorderSizePixel = 0
-    AccentBar.Parent = NotifFrame
-    
-    local AccentCorner = Instance.new("UICorner")
-    AccentCorner.CornerRadius = UDim.new(0, 8)
-    AccentCorner.Parent = AccentBar
-    
     -- Content Container
     local ContentFrame = Instance.new("Frame")
-    ContentFrame.Size = UDim2.new(1, -14, 1, 0)
+    ContentFrame.Size = UDim2.new(1, -20, 1, 0)
     ContentFrame.Position = UDim2.new(0, 10, 0, 0)
     ContentFrame.BackgroundTransparency = 1
     ContentFrame.Parent = NotifFrame
@@ -283,10 +274,24 @@ function Acinonyx:CreateWindow(config)
     Title.TextXAlignment = Enum.TextXAlignment.Left
     Title.Parent = TopBar
     
+    -- Minimize Button
+    local MinimizeButton = Instance.new("TextButton")
+    MinimizeButton.Name = "MinimizeButton"
+    MinimizeButton.Size = UDim2.new(0, 35, 0, 35)
+    MinimizeButton.Position = UDim2.new(1, -75, 0, 0)
+    MinimizeButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    MinimizeButton.BackgroundTransparency = 0.3
+    MinimizeButton.BorderSizePixel = 0
+    MinimizeButton.Text = "−"
+    MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MinimizeButton.TextSize = 24
+    MinimizeButton.Font = Enum.Font.GothamBold
+    MinimizeButton.Parent = TopBar
+    
     -- Close Button
     local CloseButton = Instance.new("TextButton")
     CloseButton.Name = "CloseButton"
-    CloseButton.Size = UDim2.new(0, 25, 0, 25)
+    CloseButton.Size = UDim2.new(0, 35, 0, 35)
     CloseButton.Position = UDim2.new(1, -40, 0, 0)
     CloseButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     CloseButton.BackgroundTransparency = 0.3
@@ -296,6 +301,14 @@ function Acinonyx:CreateWindow(config)
     CloseButton.TextSize = 24
     CloseButton.Font = Enum.Font.GothamBold
     CloseButton.Parent = TopBar
+    
+    MinimizeButton.MouseEnter:Connect(function()
+        Tween(MinimizeButton, {BackgroundColor3 = Color3.fromRGB(60, 120, 220), BackgroundTransparency = 0})
+    end)
+    
+    MinimizeButton.MouseLeave:Connect(function()
+        Tween(MinimizeButton, {BackgroundColor3 = Color3.fromRGB(30, 30, 35), BackgroundTransparency = 0.3})
+    end)
     
     CloseButton.MouseEnter:Connect(function()
         Tween(CloseButton, {BackgroundColor3 = Color3.fromRGB(220, 50, 50), BackgroundTransparency = 0})
@@ -345,8 +358,65 @@ function Acinonyx:CreateWindow(config)
     ContentContainer.BackgroundTransparency = 1
     ContentContainer.Parent = MainFrame
     
+    -- Minimize Overlay
+    local MinimizeOverlay = Instance.new("ImageButton")
+    MinimizeOverlay.Name = "MinimizeOverlay"
+    MinimizeOverlay.Size = UDim2.new(0, 80, 0, 80)
+    MinimizeOverlay.Position = UDim2.new(1, -90, 1, -90)
+    MinimizeOverlay.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    MinimizeOverlay.BackgroundTransparency = 0.2
+    MinimizeOverlay.BorderSizePixel = 0
+    MinimizeOverlay.Image = "rbxassetid://109705776664856" -- Ganti dengan ID gambar Anda
+    MinimizeOverlay.ImageTransparency = 0
+    MinimizeOverlay.ScaleType = Enum.ScaleType.Fit
+    MinimizeOverlay.Visible = false
+    MinimizeOverlay.Parent = ScreenGui
+    
+    local OverlayCorner = Instance.new("UICorner")
+    OverlayCorner.CornerRadius = UDim.new(0, 12)
+    OverlayCorner.Parent = MinimizeOverlay
+    
+    local OverlayStroke = Instance.new("UIStroke")
+    OverlayStroke.Color = Color3.fromRGB(60, 120, 220)
+    OverlayStroke.Thickness = 2
+    OverlayStroke.Transparency = 0.5
+    OverlayStroke.Parent = MinimizeOverlay
+    
+    -- Make Overlay Draggable
+    MakeDraggable(MinimizeOverlay, MinimizeOverlay)
+    
     -- Make Draggable
     MakeDraggable(MainFrame, TopBar)
+    
+    -- Minimize/Restore functionality
+    local isMinimized = false
+    
+    MinimizeButton.MouseButton1Click:Connect(function()
+        isMinimized = true
+        Tween(MainFrame, {Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1})
+        MinimizeOverlay.Visible = true
+        Tween(MinimizeOverlay, {Size = UDim2.new(0, 80, 0, 80), BackgroundTransparency = 0.2}, 0.3)
+    end)
+    
+    MinimizeOverlay.MouseButton1Click:Connect(function()
+        if isMinimized then
+            isMinimized = false
+            MinimizeOverlay.Visible = false
+            MainFrame.Size = UDim2.new(0, 0, 0, 0)
+            MainFrame.Position = UDim2.new(0.5, -windowSize.X.Offset/2, 0.5, -windowSize.Y.Offset/2)
+            Tween(MainFrame, {Size = windowSize, BackgroundTransparency = 0.3}, 0.3)
+        end
+    end)
+    
+    MinimizeOverlay.MouseEnter:Connect(function()
+        Tween(MinimizeOverlay, {Size = UDim2.new(0, 85, 0, 85)}, 0.2)
+        Tween(OverlayStroke, {Transparency = 0}, 0.2)
+    end)
+    
+    MinimizeOverlay.MouseLeave:Connect(function()
+        Tween(MinimizeOverlay, {Size = UDim2.new(0, 80, 0, 80)}, 0.2)
+        Tween(OverlayStroke, {Transparency = 0.5}, 0.2)
+    end)
     
     -- Window Object
     local Window = {
