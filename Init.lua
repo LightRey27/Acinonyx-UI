@@ -340,20 +340,8 @@ function Acinonyx:CreateWindow(config)
     end)
     
     CloseButton.MouseButton1Click:Connect(function()
-        -- Fade out animation instead of resize
-        Tween(MainFrame, {BackgroundTransparency = 1})
-        for _, child in pairs(MainFrame:GetDescendants()) do
-            if child:IsA("GuiObject") then
-                Tween(child, {BackgroundTransparency = 1})
-            end
-            if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
-                Tween(child, {TextTransparency = 1})
-            end
-            if child:IsA("ImageLabel") or child:IsA("ImageButton") then
-                Tween(child, {ImageTransparency = 1})
-            end
-        end
-        wait(0.3)
+        MainFrame.Visible = false
+        task.wait(0.1)
         ScreenGui:Destroy()
     end)
     
