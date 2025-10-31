@@ -387,7 +387,7 @@ function Acinonyx:CreateWindow(config)
     MinimizeOverlay.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
     MinimizeOverlay.BackgroundTransparency = 0.2
     MinimizeOverlay.BorderSizePixel = 0
-    MinimizeOverlay.Image = "rbxassetid://109705776664856" -- Ganti dengan ID gambar Anda
+    MinimizeOverlay.Image = "rbxassetid://76457278649459" -- Ganti dengan ID gambar Anda
     MinimizeOverlay.ImageTransparency = 0
     MinimizeOverlay.ScaleType = Enum.ScaleType.Fit
     MinimizeOverlay.Visible = false
