@@ -1,0 +1,479 @@
+--[[
+    Acinonyx UI Library - Test Script
+    Menampilkan semua komponen UI yang tersedia
+]]
+
+-- Load Library
+local Acinonyx = loadstring(game:HttpGet("https://raw.githubusercontent.com/LightRey27/Acinonyx-UI/main/Init.lua"))()
+-- ATAU jika menggunakan lokal:
+-- local Acinonyx = loadstring(readfile("Acinonyx.lua"))()
+
+-- Buat Window (size akan otomatis menyesuaikan layar)
+local Window = Acinonyx:CreateWindow({
+    Name = "Acinonyx UI Test"
+    -- Size dihilangkan agar otomatis responsive
+    -- Atau bisa tetap custom: Size = UDim2.new(0, 600, 0, 450)
+})
+
+-- ========== TAB 1: Main Components ==========
+local MainTab = Window:CreateTab("Main")
+
+-- Label
+MainTab:CreateLabel("Welcome to Acinonyx UI Library!")
+
+-- Button
+MainTab:CreateButton({
+    Text = "Test Button",
+    Callback = function()
+        print("Button diklik!")
+        Window:Notify({
+            Title = "Success";
+            Text = "Button berhasil diklik!";
+            Duration = 3;
+            Type = "success";
+        })
+    end
+})
+
+MainTab:CreateButton({
+    Text = "Print Player Name",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        print("Player Name:", player.Name)
+        print("Display Name:", player.DisplayName)
+    end
+})
+
+-- Toggle
+MainTab:CreateToggle({
+    Text = "Enable Feature",
+    Default = false,
+    Callback = function(value)
+        print("Toggle status:", value)
+        if value then
+            print("Feature AKTIF")
+        else
+            print("Feature NONAKTIF")
+        end
+    end
+})
+
+MainTab:CreateToggle({
+    Text = "God Mode (Example)",
+    Default = false,
+    Callback = function(value)
+        print("God Mode:", value and "ON" or "OFF")
+    end
+})
+
+-- Slider
+MainTab:CreateSlider({
+    Text = "WalkSpeed",
+    Min = 16,
+    Max = 200,
+    Default = 16,
+    Callback = function(value)
+        print("WalkSpeed:", value)
+        local player = game.Players.LocalPlayer
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid.WalkSpeed = value
+        end
+    end
+})
+
+MainTab:CreateSlider({
+    Text = "JumpPower",
+    Min = 50,
+    Max = 300,
+    Default = 50,
+    Callback = function(value)
+        print("JumpPower:", value)
+        local player = game.Players.LocalPlayer
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid.JumpPower = value
+        end
+    end
+})
+
+-- ========== TAB 2: Input & Dropdown ==========
+local InputTab = Window:CreateTab("Input")
+
+InputTab:CreateLabel("Input dan Dropdown Components")
+
+-- Textbox
+InputTab:CreateTextbox({
+    Text = "Enter Username",
+    Placeholder = "Type username here...",
+    Callback = function(text)
+        print("Username entered:", text)
+        Window:Notify({
+            Title = "Username";
+            Text = "You entered: " .. text;
+            Duration = 3;
+            Type = "info";
+        })
+    end
+})
+
+InputTab:CreateTextbox({
+    Text = "Custom Message",
+    Placeholder = "Type your message...",
+    Callback = function(text)
+        print("Message:", text)
+    end
+})
+
+InputTab:CreateTextbox({
+    Text = "Player ID",
+    Placeholder = "Enter Player ID...",
+    Callback = function(text)
+        local id = tonumber(text)
+        if id then
+            print("Valid Player ID:", id)
+        else
+            print("Invalid ID! Please enter numbers only")
+        end
+    end
+})
+
+-- Dropdown
+InputTab:CreateDropdown({
+    Text = "Select Game Mode",
+    Options = {"Adventure", "Survival", "Creative", "Hardcore"},
+    Callback = function(option)
+        print("Selected Game Mode:", option)
+        Window:Notify({
+            Title = "Game Mode";
+            Text = "You selected: " .. option;
+            Duration = 3;
+            Type = "info";
+        })
+    end
+})
+
+InputTab:CreateDropdown({
+    Text = "Select Weapon",
+    Options = {"Sword", "Bow", "Magic Staff", "Dual Blades", "Hammer"},
+    Callback = function(option)
+        print("Selected Weapon:", option)
+    end
+})
+
+InputTab:CreateDropdown({
+    Text = "Teleport Location",
+    Options = {"Spawn", "Shop", "Arena", "Boss Room", "Secret Area"},
+    Callback = function(option)
+        print("Teleporting to:", option)
+    end
+})
+
+InputTab:CreateLabel("--- Multi Select Dropdowns ---")
+
+-- Multi Dropdown 1
+InputTab:CreateMultiDropdown({
+    Text = "Select Features",
+    Options = {"ESP", "Aimbot", "Fly", "NoClip", "Speed"},
+    Default = {"ESP"},
+    Callback = function(selected)
+        print("Selected Features:", table.concat(selected, ", "))
+        for _, feature in ipairs(selected) do
+            print("  -", feature, "is enabled")
+        end
+    end
+})
+
+-- Multi Dropdown 2
+InputTab:CreateMultiDropdown({
+    Text = "Item Filters",
+    Options = {"Weapons", "Armor", "Potions", "Materials", "Quest Items"},
+    Default = {"Weapons", "Armor"},
+    Callback = function(selected)
+        print("Item Filters Active:", #selected, "filters")
+        for _, filter in ipairs(selected) do
+            print("  Filter:", filter)
+        end
+    end
+})
+
+-- Multi Dropdown 3
+InputTab:CreateMultiDropdown({
+    Text = "Target Players",
+    Options = {"Player1", "Player2", "Player3", "Player4", "Player5"},
+    Default = {},
+    Callback = function(selected)
+        if #selected > 0 then
+            print("Targeting:", table.concat(selected, ", "))
+        else
+            print("No players selected")
+        end
+    end
+})
+
+-- ========== TAB 3: Advanced ==========
+local AdvancedTab = Window:CreateTab("Advanced")
+
+AdvancedTab:CreateLabel("Advanced Features")
+
+-- Kombinasi Button untuk testing
+AdvancedTab:CreateButton({
+    Text = "Get Player Info",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        print("=== Player Info ===")
+        print("Name:", player.Name)
+        print("UserId:", player.UserId)
+        print("Account Age:", player.AccountAge, "days")
+        if player.Character then
+            print("Character Position:", player.Character.HumanoidRootPart.Position)
+        end
+    end
+})
+
+AdvancedTab:CreateButton({
+    Text = "Reset Character",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        if player.Character then
+            player.Character:BreakJoints()
+            print("Character reset!")
+        end
+    end
+})
+
+-- Toggle untuk ESP (Example)
+AdvancedTab:CreateToggle({
+    Text = "ESP Players (Example)",
+    Default = false,
+    Callback = function(value)
+        print("ESP Players:", value and "Enabled" or "Disabled")
+        -- Tambahkan kode ESP di sini
+    end
+})
+
+-- Slider FOV
+AdvancedTab:CreateSlider({
+    Text = "Camera FOV",
+    Min = 70,
+    Max = 120,
+    Default = 70,
+    Callback = function(value)
+        print("FOV:", value)
+        game.Workspace.CurrentCamera.FieldOfView = value
+    end
+})
+
+-- Slider Gravity
+AdvancedTab:CreateSlider({
+    Text = "Workspace Gravity",
+    Min = 0,
+    Max = 196,
+    Default = 196,
+    Callback = function(value)
+        print("Gravity:", value)
+        game.Workspace.Gravity = value
+    end
+})
+
+-- Dropdown Team Select
+AdvancedTab:CreateDropdown({
+    Text = "Select Team",
+    Options = {"Red Team", "Blue Team", "Green Team", "Auto"},
+    Callback = function(option)
+        print("Team Selected:", option)
+    end
+})
+
+AdvancedTab:CreateLabel("--- Notification Tests ---")
+
+-- Test notification types
+AdvancedTab:CreateButton({
+    Text = "Test Info Notification",
+    Callback = function()
+        Window:Notify({
+            Title = "Information";
+            Text = "This is an info notification with blue accent";
+            Duration = 3;
+            Type = "info";
+        })
+    end
+})
+
+AdvancedTab:CreateButton({
+    Text = "Test Success Notification",
+    Callback = function()
+        Window:Notify({
+            Title = "Success";
+            Text = "Operation completed successfully!";
+            Duration = 3;
+            Type = "success";
+        })
+    end
+})
+
+AdvancedTab:CreateButton({
+    Text = "Test Warning Notification",
+    Callback = function()
+        Window:Notify({
+            Title = "Warning";
+            Text = "This is a warning message. Please be careful!";
+            Duration = 3;
+            Type = "warning";
+        })
+    end
+})
+
+AdvancedTab:CreateButton({
+    Text = "Test Error Notification",
+    Callback = function()
+        Window:Notify({
+            Title = "Error";
+            Text = "Something went wrong! Check console for details.";
+            Duration = 3;
+            Type = "error";
+        })
+    end
+})
+
+-- ========== TAB 4: Settings ==========
+local SettingsTab = Window:CreateTab("Settings")
+
+SettingsTab:CreateLabel("UI Settings")
+
+-- Slider UI Scale (Example)
+SettingsTab:CreateSlider({
+    Text = "UI Scale",
+    Min = 80,
+    Max = 120,
+    Default = 100,
+    Callback = function(value)
+        print("UI Scale:", value .. "%")
+        -- Implementasi scale UI di sini jika diperlukan
+    end
+})
+
+-- Toggle Auto Save
+SettingsTab:CreateToggle({
+    Text = "Auto Save Settings",
+    Default = true,
+    Callback = function(value)
+        print("Auto Save:", value and "ON" or "OFF")
+    end
+})
+
+-- Toggle Notifications
+SettingsTab:CreateToggle({
+    Text = "Show Notifications",
+    Default = true,
+    Callback = function(value)
+        print("Notifications:", value and "Enabled" or "Disabled")
+    end
+})
+
+-- Textbox Config Name
+SettingsTab:CreateTextbox({
+    Text = "Config Name",
+    Placeholder = "MyConfig",
+    Callback = function(text)
+        print("Config Name:", text)
+    end
+})
+
+-- Button Save Config
+SettingsTab:CreateButton({
+    Text = "Save Configuration",
+    Callback = function()
+        print("Configuration saved!")
+        Window:Notify({
+            Title = "Settings";
+            Text = "Configuration saved successfully!";
+            Duration = 3;
+            Type = "success";
+        })
+    end
+})
+
+-- Button Load Config
+SettingsTab:CreateButton({
+    Text = "Load Configuration",
+    Callback = function()
+        print("Configuration loaded!")
+        Window:Notify({
+            Title = "Settings";
+            Text = "Configuration loaded successfully!";
+            Duration = 3;
+            Type = "success";
+        })
+    end
+})
+
+-- Dropdown Theme
+SettingsTab:CreateDropdown({
+    Text = "UI Theme",
+    Options = {"Dark", "Light", "Blue", "Purple", "Custom"},
+    Callback = function(option)
+        print("Theme Selected:", option)
+        Window:Notify({
+            Title = "Theme";
+            Text = "Theme changed to: " .. option;
+            Duration = 3;
+            Type = "info";
+        })
+    end
+})
+
+-- Label Info
+SettingsTab:CreateLabel("Version: 1.0.0 | Made with Acinonyx")
+
+-- ========== TAB 5: About ==========
+local AboutTab = Window:CreateTab("About")
+
+AboutTab:CreateLabel("Acinonyx UI Library")
+AboutTab:CreateLabel("Version: 1.0.0")
+AboutTab:CreateLabel("Created by: Your Name")
+AboutTab:CreateLabel("")
+AboutTab:CreateLabel("Komponen yang tersedia:")
+AboutTab:CreateLabel("• Button - Interactive buttons")
+AboutTab:CreateLabel("• Toggle - On/Off switches")
+AboutTab:CreateLabel("• Slider - Value adjusters")
+AboutTab:CreateLabel("• Textbox - Text input fields")
+AboutTab:CreateLabel("• Dropdown - Single selection menus")
+AboutTab:CreateLabel("• MultiDropdown - Multi-select menus")
+AboutTab:CreateLabel("• Label - Information display")
+
+AboutTab:CreateButton({
+    Text = "Join Discord (Example)",
+    Callback = function()
+        print("Discord link clicked!")
+        -- setclipboard("https://discord.gg/yourserver")
+    end
+})
+
+AboutTab:CreateButton({
+    Text = "GitHub Repository (Example)",
+    Callback = function()
+        print("GitHub link clicked!")
+        -- setclipboard("https://github.com/yourusername/repo")
+    end
+})
+
+-- Final notification
+print("======================")
+print("Acinonyx UI Test Loaded!")
+print("All components initialized")
+print("======================")
+
+-- Test different notification types
+Window:Notify({
+    Title = "Welcome!";
+    Text = "Acinonyx UI loaded successfully!";
+    Duration = 5;
+    Type = "success";
+})
+
+task.wait(0.5)
+Window:Notify({
+    Title = "Info";
+    Text = "Check out all the components in each tab!";
+    Duration = 4;
+    Type = "info";
+})
