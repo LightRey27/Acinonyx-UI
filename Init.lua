@@ -1,7 +1,7 @@
 --[[
     Acinonyx UI Library
-    Modern UI Library for Roblox Script Executors
-    Version: 1.0.0
+    Single-file UI library for Roblox client environments
+    Version: 1.1.0
 ]]
 
 local Acinonyx = {}
@@ -10,11 +10,29 @@ Acinonyx.__index = Acinonyx
 -- Services
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 
 -- Utility Functions
+local ActiveWindowCleanup = nil
+
+local function Connect(connections, signal, callback)
+    local connection = signal:Connect(callback)
+    if connections then
+        table.insert(connections, connection)
+    end
+    return connection
+end
+
+local function DisconnectAll(connections)
+    for _, connection in ipairs(connections) do
+        if connection.Connected then
+            connection:Disconnect()
+        end
+    end
+    table.clear(connections)
+end
+
 local function Tween(instance, properties, duration)
     duration = duration or 0.3
     local tween = TweenService:Create(instance, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), properties)
@@ -22,34 +40,41 @@ local function Tween(instance, properties, duration)
     return tween
 end
 
-local function MakeDraggable(frame, handle)
+local function MakeDraggable(frame, handle, connections)
     local dragging = false
-    local dragInput, mousePos, framePos
+    local activeTouch = nil
+    local inputStart = nil
+    local frameStart = nil
     
-    handle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    Connect(connections, handle.InputBegan, function(input)
+        local isMouse = input.UserInputType == Enum.UserInputType.MouseButton1
+        local isTouch = input.UserInputType == Enum.UserInputType.Touch
+        if isMouse or isTouch then
             dragging = true
-            mousePos = input.Position
-            framePos = frame.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
+            activeTouch = isTouch and input or nil
+            inputStart = input.Position
+            frameStart = frame.Position
         end
     end)
     
-    handle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
+    Connect(connections, UserInputService.InputChanged, function(input)
+        local isMouseMove = input.UserInputType == Enum.UserInputType.MouseMovement
+        local isActiveTouch = activeTouch ~= nil and input == activeTouch
+        if dragging and (isMouseMove or isActiveTouch) then
+            local delta = input.Position - inputStart
+            frame.Position = UDim2.new(
+                frameStart.X.Scale,
+                frameStart.X.Offset + delta.X,
+                frameStart.Y.Scale,
+                frameStart.Y.Offset + delta.Y
+            )
         end
     end)
     
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - mousePos
-            Tween(frame, {Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)}, 0.1)
+    Connect(connections, UserInputService.InputEnded, function(input)
+        if (input.UserInputType == Enum.UserInputType.MouseButton1 and activeTouch == nil) or input == activeTouch then
+            dragging = false
+            activeTouch = nil
         end
     end)
 end
@@ -58,9 +83,10 @@ end
 local NotificationHolder = nil
 local ActiveNotifications = {}
 
-local function CreateNotification(title, text, duration, notifType)
-    duration = duration or 3
+local function CreateNotification(title, text, duration, notifType, ownerNotifications, guiParent)
+    duration = math.max(tonumber(duration) or 3, 0.1)
     notifType = notifType or "info" -- info, success, warning, error
+    guiParent = guiParent or CoreGui
     
     -- Create notification holder if it doesn't exist
     if not NotificationHolder or not NotificationHolder.Parent then
@@ -70,12 +96,10 @@ local function CreateNotification(title, text, duration, notifType)
         NotifGui.ResetOnSpawn = false
         NotifGui.DisplayOrder = 999
         
-        if syn then
-            syn.protect_gui(NotifGui)
-            NotifGui.Parent = CoreGui
-        else
-            NotifGui.Parent = CoreGui
+        if guiParent == CoreGui and type(syn) == "table" and type(syn.protect_gui) == "function" then
+            pcall(syn.protect_gui, NotifGui)
         end
+        NotifGui.Parent = guiParent
         
         NotificationHolder = Instance.new("Frame")
         NotificationHolder.Name = "NotificationHolder"
@@ -110,6 +134,7 @@ local function CreateNotification(title, text, duration, notifType)
     NotifFrame.BorderSizePixel = 0
     NotifFrame.ClipsDescendants = true
     NotifFrame.Parent = NotificationHolder
+    ActiveNotifications[NotifFrame] = true
     
     local NotifCorner = Instance.new("UICorner")
     NotifCorner.CornerRadius = UDim.new(0, 8)
@@ -185,51 +210,109 @@ local function CreateNotification(title, text, duration, notifType)
     Tween(NotifFrame, {BackgroundTransparency = 0.2}, 0.3)
     
     -- Auto close
-    local function CloseNotification()
+    local notificationConnections = {}
+    local isClosing = false
+
+    local function RemoveNotification()
+        if NotifFrame.Parent then
+            NotifFrame:Destroy()
+        end
+        ActiveNotifications[NotifFrame] = nil
+        if ownerNotifications then
+            ownerNotifications[NotifFrame] = nil
+        end
+
+        if next(ActiveNotifications) == nil and NotificationHolder and NotificationHolder.Parent then
+            local notificationGui = NotificationHolder.Parent
+            NotificationHolder = nil
+            notificationGui:Destroy()
+        end
+    end
+
+    local function CloseNotification(immediate)
+        if isClosing then
+            return
+        end
+
+        isClosing = true
+        DisconnectAll(notificationConnections)
+
+        if immediate then
+            RemoveNotification()
+            return
+        end
+
         Tween(NotifFrame, {BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0)}, 0.3)
-        wait(0.3)
-        NotifFrame:Destroy()
+        task.delay(0.3, RemoveNotification)
+    end
+
+    if ownerNotifications then
+        ownerNotifications[NotifFrame] = function()
+            CloseNotification(true)
+        end
     end
     
-    CloseBtn.MouseEnter:Connect(function()
+    Connect(notificationConnections, CloseBtn.MouseEnter, function()
         Tween(CloseBtn, {BackgroundColor3 = Color3.fromRGB(220, 80, 80), BackgroundTransparency = 0})
     end)
     
-    CloseBtn.MouseLeave:Connect(function()
+    Connect(notificationConnections, CloseBtn.MouseLeave, function()
         Tween(CloseBtn, {BackgroundColor3 = Color3.fromRGB(40, 40, 50), BackgroundTransparency = 0.3})
     end)
     
-    CloseBtn.MouseButton1Click:Connect(CloseNotification)
+    Connect(notificationConnections, CloseBtn.Activated, function()
+        CloseNotification(false)
+    end)
     
     -- Progress bar animation
     Tween(ProgressBar, {Size = UDim2.new(0, 0, 0, 2)}, duration)
     
     -- Auto dismiss
     task.delay(duration, CloseNotification)
+
+    return NotifFrame
 end
 
 -- Main Library Functions
 function Acinonyx:CreateWindow(config)
     config = config or {}
     local windowName = config.Name or "Acinonyx"
+    local guiParent = config.GuiParent or CoreGui
+    if typeof(guiParent) ~= "Instance" then
+        error("GuiParent must be a Roblox Instance", 2)
+    end
+
+    if ActiveWindowCleanup then
+        ActiveWindowCleanup()
+    end
+
+    local connections = {}
+    local windowNotifications = {}
+    local destroyed = false
     
     -- Get viewport size for responsive scaling
-    local ViewportSize = workspace.CurrentCamera.ViewportSize
+    local camera = workspace.CurrentCamera
+    local ViewportSize = camera and camera.ViewportSize or Vector2.new(800, 600)
     local screenWidth = ViewportSize.X
     local screenHeight = ViewportSize.Y
     
-    -- Default size as percentage of screen (or use custom size if provided)
-    local defaultWidth = math.floor(screenWidth * 0.4) -- 40% of screen width
-    local defaultHeight = math.floor(screenHeight * 0.5) -- 50% of screen height
-    
-    -- Clamp to min/max values
-    defaultWidth = math.clamp(defaultWidth, 500, 800)
-    defaultHeight = math.clamp(defaultHeight, 400, 600)
-    
-    local windowSize = config.Size or UDim2.new(0, defaultWidth, 0, defaultHeight)
+    -- Keep the default window inside smaller viewports while retaining desktop limits.
+    local availableWidth = math.max(1, screenWidth - 20)
+    local availableHeight = math.max(1, screenHeight - 20)
+    local defaultWidth = math.clamp(
+        math.floor(screenWidth * 0.9),
+        math.min(300, availableWidth),
+        math.min(800, availableWidth)
+    )
+    local defaultHeight = math.clamp(
+        math.floor(screenHeight * 0.82),
+        math.min(300, availableHeight),
+        math.min(600, availableHeight)
+    )
+    local windowSize = config.Size or UDim2.fromOffset(defaultWidth, defaultHeight)
     
     -- Clean up old instances
-    for _, gui in pairs(CoreGui:GetChildren()) do
+    for _, gui in pairs(guiParent:GetChildren()) do
         if gui.Name == "AcinonyxUI" then
             gui:Destroy()
         end
@@ -241,18 +324,17 @@ function Acinonyx:CreateWindow(config)
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     ScreenGui.ResetOnSpawn = false
     
-    if syn then
-        syn.protect_gui(ScreenGui)
-        ScreenGui.Parent = CoreGui
-    else
-        ScreenGui.Parent = CoreGui
+    if guiParent == CoreGui and type(syn) == "table" and type(syn.protect_gui) == "function" then
+        pcall(syn.protect_gui, ScreenGui)
     end
+    ScreenGui.Parent = guiParent
     
     -- Main Frame
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
     MainFrame.Size = windowSize
-    MainFrame.Position = UDim2.new(0.5, -windowSize.X.Offset/2, 0.5, -windowSize.Y.Offset/2)
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
     MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
     MainFrame.BackgroundTransparency = 0.3
     MainFrame.BorderSizePixel = 0
@@ -324,27 +406,47 @@ function Acinonyx:CreateWindow(config)
     CloseButton.Font = Enum.Font.GothamBold
     CloseButton.Parent = TopBar
     
-    MinimizeButton.MouseEnter:Connect(function()
+    Connect(connections, MinimizeButton.MouseEnter, function()
         Tween(MinimizeButton, {BackgroundColor3 = Color3.fromRGB(60, 120, 220), BackgroundTransparency = 0})
     end)
     
-    MinimizeButton.MouseLeave:Connect(function()
+    Connect(connections, MinimizeButton.MouseLeave, function()
         Tween(MinimizeButton, {BackgroundColor3 = Color3.fromRGB(30, 30, 35), BackgroundTransparency = 0.3})
     end)
     
-    CloseButton.MouseEnter:Connect(function()
+    Connect(connections, CloseButton.MouseEnter, function()
         Tween(CloseButton, {BackgroundColor3 = Color3.fromRGB(220, 50, 50), BackgroundTransparency = 0})
     end)
     
-    CloseButton.MouseLeave:Connect(function()
+    Connect(connections, CloseButton.MouseLeave, function()
         Tween(CloseButton, {BackgroundColor3 = Color3.fromRGB(30, 30, 35), BackgroundTransparency = 0.3})
     end)
-    
-    CloseButton.MouseButton1Click:Connect(function()
-        MainFrame.Visible = false
-        task.wait(0.1)
-        ScreenGui:Destroy()
-    end)
+
+    local function DestroyWindow()
+        if destroyed then
+            return
+        end
+
+        destroyed = true
+        DisconnectAll(connections)
+
+        local notificationCleanups = {}
+        for _, cleanupNotification in pairs(windowNotifications) do
+            table.insert(notificationCleanups, cleanupNotification)
+        end
+        for _, cleanupNotification in ipairs(notificationCleanups) do
+            cleanupNotification()
+        end
+
+        if ScreenGui.Parent then
+            ScreenGui:Destroy()
+        end
+        if ActiveWindowCleanup == DestroyWindow then
+            ActiveWindowCleanup = nil
+        end
+    end
+    ActiveWindowCleanup = DestroyWindow
+    Connect(connections, CloseButton.Activated, DestroyWindow)
     
     -- Tab Container
     local TabContainer = Instance.new("Frame")
@@ -474,15 +576,15 @@ function Acinonyx:CreateWindow(config)
     OverlayStroke.Parent = MinimizeOverlay
     
     -- Make Overlay Draggable
-    MakeDraggable(MinimizeOverlay, MinimizeOverlay)
+    MakeDraggable(MinimizeOverlay, MinimizeOverlay, connections)
     
     -- Make Draggable
-    MakeDraggable(MainFrame, TopBar)
+    MakeDraggable(MainFrame, TopBar, connections)
     
     -- Minimize/Restore functionality
     local isMinimized = false
     
-    MinimizeButton.MouseButton1Click:Connect(function()
+    Connect(connections, MinimizeButton.Activated, function()
         isMinimized = true
         MainFrame.Visible = false
         MinimizeOverlay.Visible = true
@@ -490,7 +592,7 @@ function Acinonyx:CreateWindow(config)
         Tween(MinimizeOverlay, {Size = UDim2.new(0, 40, 0, 40)}, 0.3)
     end)
     
-    MinimizeOverlay.MouseButton1Click:Connect(function()
+    Connect(connections, MinimizeOverlay.Activated, function()
         if isMinimized then
             isMinimized = false
             Tween(MinimizeOverlay, {Size = UDim2.new(0, 0, 0, 0)}, 0.2)
@@ -498,17 +600,17 @@ function Acinonyx:CreateWindow(config)
             MinimizeOverlay.Visible = false
             MainFrame.Visible = true
             MainFrame.Size = UDim2.new(0, 0, 0, 0)
-            MainFrame.Position = UDim2.new(0.5, -windowSize.X.Offset/2, 0.5, -windowSize.Y.Offset/2)
+            MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
             Tween(MainFrame, {Size = windowSize}, 0.3)
         end
     end)
     
-    MinimizeOverlay.MouseEnter:Connect(function()
+    Connect(connections, MinimizeOverlay.MouseEnter, function()
         Tween(MinimizeOverlay, {Size = UDim2.new(0, 45, 0, 45)}, 0.2)
         Tween(OverlayStroke, {Transparency = 0}, 0.2)
     end)
     
-    MinimizeOverlay.MouseLeave:Connect(function()
+    Connect(connections, MinimizeOverlay.MouseLeave, function()
         Tween(MinimizeOverlay, {Size = UDim2.new(0, 40, 0, 40)}, 0.2)
         Tween(OverlayStroke, {Transparency = 0.5}, 0.2)
     end)
@@ -521,9 +623,14 @@ function Acinonyx:CreateWindow(config)
         ProfileFooter = ProfileFooter,
         ProfileAvatar = ProfileAvatar,
         ProfileUsername = ProfileUsername,
+        GuiParent = guiParent,
         Tabs = {},
         CurrentTab = nil
     }
+
+    function Window:Destroy()
+        DestroyWindow()
+    end
     
     -- Notification Method
     function Window:Notify(config)
@@ -533,10 +640,17 @@ function Acinonyx:CreateWindow(config)
         local duration = config.Duration or 3
         local notifType = config.Type or "info" -- info, success, warning, error
         
-        CreateNotification(title, text, duration, notifType)
+        return CreateNotification(title, text, duration, notifType, windowNotifications, guiParent)
     end
     
     function Window:CreateTab(tabName)
+        if type(tabName) ~= "string" or tabName == "" then
+            error("Tab name must be a non-empty string", 2)
+        end
+        if Window.Tabs[tabName] then
+            error("A tab named '" .. tabName .. "' already exists", 2)
+        end
+
         local Tab = {}
         
         -- Tab Button
@@ -581,11 +695,11 @@ function Acinonyx:CreateWindow(config)
         ContentPadding.Parent = TabContent
         
         -- Auto-resize canvas
-        ContentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        Connect(connections, ContentLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
             TabContent.CanvasSize = UDim2.new(0, 0, 0, ContentLayout.AbsoluteContentSize.Y + 10)
         end)
         
-        TabButton.MouseButton1Click:Connect(function()
+        Connect(connections, TabButton.Activated, function()
             for _, tab in pairs(Window.Tabs) do
                 tab.Button.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
                 tab.Button.BackgroundTransparency = 0.3
@@ -626,15 +740,15 @@ function Acinonyx:CreateWindow(config)
             ButtonCorner.CornerRadius = UDim.new(0, 6)
             ButtonCorner.Parent = Button
             
-            Button.MouseEnter:Connect(function()
+            Connect(connections, Button.MouseEnter, function()
                 Tween(Button, {BackgroundColor3 = Color3.fromRGB(60, 120, 220), BackgroundTransparency = 0.2})
             end)
             
-            Button.MouseLeave:Connect(function()
+            Connect(connections, Button.MouseLeave, function()
                 Tween(Button, {BackgroundColor3 = Color3.fromRGB(40, 40, 50), BackgroundTransparency = 0.3})
             end)
             
-            Button.MouseButton1Click:Connect(callback)
+            Connect(connections, Button.Activated, callback)
             
             return Button
         end
@@ -693,7 +807,7 @@ function Acinonyx:CreateWindow(config)
             
             local toggled = default
             
-            ToggleButton.MouseButton1Click:Connect(function()
+            Connect(connections, ToggleButton.Activated, function()
                 toggled = not toggled
                 
                 Tween(ToggleButton, {BackgroundColor3 = toggled and Color3.fromRGB(60, 120, 220) or Color3.fromRGB(60, 60, 70)})
@@ -708,9 +822,30 @@ function Acinonyx:CreateWindow(config)
         function Tab:CreateSlider(config)
             config = config or {}
             local sliderText = config.Text or "Slider"
-            local min = config.Min or 0
-            local max = config.Max or 100
-            local default = config.Default or min
+            local min = tonumber(config.Min) or 0
+            local max = tonumber(config.Max) or 100
+            local step = tonumber(config.Step) or 1
+            if max <= min then
+                error("Slider Max must be greater than Min", 2)
+            end
+            if step <= 0 then
+                error("Slider Step must be greater than 0", 2)
+            end
+
+            local function SnapValue(value)
+                local steppedValue = min + math.floor(((value - min) / step) + 0.5) * step
+                return math.clamp(steppedValue, min, max)
+            end
+
+            local function FormatValue(value)
+                local stepDecimals = tostring(step):match("%.(%d+)")
+                if stepDecimals then
+                    return string.format("%." .. math.min(#stepDecimals, 6) .. "f", value)
+                end
+                return tostring(value)
+            end
+
+            local default = SnapValue(math.clamp(tonumber(config.Default) or min, min, max))
             local callback = config.Callback or function() end
             
             local SliderFrame = Instance.new("Frame")
@@ -740,7 +875,7 @@ function Acinonyx:CreateWindow(config)
             SliderValue.Size = UDim2.new(0, 50, 0, 20)
             SliderValue.Position = UDim2.new(1, -60, 0, 5)
             SliderValue.BackgroundTransparency = 1
-            SliderValue.Text = tostring(default)
+            SliderValue.Text = FormatValue(default)
             SliderValue.TextColor3 = Color3.fromRGB(200, 200, 200)
             SliderValue.TextSize = 14
             SliderValue.Font = Enum.Font.Gotham
@@ -775,32 +910,45 @@ function Acinonyx:CreateWindow(config)
             SliderButton.Parent = SliderBar
             
             local dragging = false
-            
+            local activeTouch = nil
+
             local function UpdateSlider(input)
-                local pos = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
-                local value = math.floor(min + (max - min) * pos)
-                
-                SliderFill.Size = UDim2.new(pos, 0, 1, 0)
-                SliderValue.Text = tostring(value)
+                local barWidth = SliderBar.AbsoluteSize.X
+                if barWidth <= 0 then
+                    return
+                end
+
+                local position = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / barWidth, 0, 1)
+                local value = SnapValue(min + (max - min) * position)
+                local fillPosition = (value - min) / (max - min)
+
+                SliderFill.Size = UDim2.new(fillPosition, 0, 1, 0)
+                SliderValue.Text = FormatValue(value)
                 callback(value)
             end
             
-            SliderButton.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            Connect(connections, SliderButton.InputBegan, function(input)
+                local isMouse = input.UserInputType == Enum.UserInputType.MouseButton1
+                local isTouch = input.UserInputType == Enum.UserInputType.Touch
+                if isMouse or isTouch then
                     dragging = true
+                    activeTouch = isTouch and input or nil
                     UpdateSlider(input)
                 end
             end)
             
-            SliderButton.InputEnded:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            Connect(connections, UserInputService.InputChanged, function(input)
+                local isMouseMove = input.UserInputType == Enum.UserInputType.MouseMovement
+                local isActiveTouch = activeTouch ~= nil and input == activeTouch
+                if dragging and (isMouseMove or isActiveTouch) then
+                    UpdateSlider(input)
+                end
+            end)
+
+            Connect(connections, UserInputService.InputEnded, function(input)
+                if (input.UserInputType == Enum.UserInputType.MouseButton1 and activeTouch == nil) or input == activeTouch then
                     dragging = false
-                end
-            end)
-            
-            UserInputService.InputChanged:Connect(function(input)
-                if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                    UpdateSlider(input)
+                    activeTouch = nil
                 end
             end)
             
@@ -860,7 +1008,7 @@ function Acinonyx:CreateWindow(config)
             TextboxPadding.PaddingRight = UDim.new(0, 8)
             TextboxPadding.Parent = Textbox
             
-            Textbox.FocusLost:Connect(function(enterPressed)
+            Connect(connections, Textbox.FocusLost, function(enterPressed)
                 if enterPressed then
                     callback(Textbox.Text)
                 end
@@ -966,15 +1114,15 @@ function Acinonyx:CreateWindow(config)
                 OptionPadding.PaddingLeft = UDim.new(0, 10)
                 OptionPadding.Parent = OptionButton
                 
-                OptionButton.MouseEnter:Connect(function()
+                Connect(connections, OptionButton.MouseEnter, function()
                     Tween(OptionButton, {BackgroundColor3 = Color3.fromRGB(60, 120, 220), BackgroundTransparency = 0.1})
                 end)
                 
-                OptionButton.MouseLeave:Connect(function()
+                Connect(connections, OptionButton.MouseLeave, function()
                     Tween(OptionButton, {BackgroundColor3 = Color3.fromRGB(35, 35, 40), BackgroundTransparency = 0.2})
                 end)
                 
-                OptionButton.MouseButton1Click:Connect(function()
+                Connect(connections, OptionButton.Activated, function()
                     DropdownButton.Text = dropdownText .. ": " .. option
                     callback(option)
                     
@@ -984,7 +1132,7 @@ function Acinonyx:CreateWindow(config)
                 end)
             end
             
-            DropdownButton.MouseButton1Click:Connect(function()
+            Connect(connections, DropdownButton.Activated, function()
                 isOpen = not isOpen
                 
                 if isOpen then
@@ -1119,15 +1267,15 @@ function Acinonyx:CreateWindow(config)
                     Checkbox.BackgroundColor3 = Color3.fromRGB(60, 120, 220)
                 end
                 
-                OptionButton.MouseEnter:Connect(function()
+                Connect(connections, OptionButton.MouseEnter, function()
                     Tween(OptionButton, {BackgroundColor3 = Color3.fromRGB(45, 45, 55), BackgroundTransparency = 0.1})
                 end)
                 
-                OptionButton.MouseLeave:Connect(function()
+                Connect(connections, OptionButton.MouseLeave, function()
                     Tween(OptionButton, {BackgroundColor3 = Color3.fromRGB(35, 35, 40), BackgroundTransparency = 0.2})
                 end)
                 
-                OptionButton.MouseButton1Click:Connect(function()
+                Connect(connections, OptionButton.Activated, function()
                     selected[option] = not selected[option]
                     Checkmark.Visible = selected[option]
                     
@@ -1149,7 +1297,7 @@ function Acinonyx:CreateWindow(config)
                 end)
             end
             
-            DropdownButton.MouseButton1Click:Connect(function()
+            Connect(connections, DropdownButton.Activated, function()
                 isOpen = not isOpen
                 
                 if isOpen then
@@ -1169,7 +1317,7 @@ function Acinonyx:CreateWindow(config)
         Window.Tabs[tabName] = Tab
         
         -- Auto-select first tab
-        if #Window.Tabs == 1 then
+        if Window.CurrentTab == nil then
             TabButton.BackgroundColor3 = Color3.fromRGB(60, 120, 220)
             TabButton.BackgroundTransparency = 0.2
             TabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
