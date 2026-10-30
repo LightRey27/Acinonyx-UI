@@ -12,6 +12,7 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
 
 -- Utility Functions
 local function Tween(instance, properties, duration)
@@ -348,7 +349,7 @@ function Acinonyx:CreateWindow(config)
     -- Tab Container
     local TabContainer = Instance.new("Frame")
     TabContainer.Name = "TabContainer"
-    TabContainer.Size = UDim2.new(0, 120, 1, -50)
+    TabContainer.Size = UDim2.new(0, 120, 1, -110)
     TabContainer.Position = UDim2.new(0, 10, 0, 45)
     TabContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
     TabContainer.BackgroundTransparency = 0.3
@@ -370,6 +371,75 @@ function Acinonyx:CreateWindow(config)
     TabPadding.PaddingLeft = UDim.new(0, 8)
     TabPadding.PaddingRight = UDim.new(0, 8)
     TabPadding.Parent = TabContainer
+
+    -- Player profile footer
+    local ProfileFooter = Instance.new("Frame")
+    ProfileFooter.Name = "ProfileFooter"
+    ProfileFooter.Size = UDim2.new(0, 120, 0, 45)
+    ProfileFooter.Position = UDim2.new(0, 10, 1, -10)
+    ProfileFooter.AnchorPoint = Vector2.new(0, 1)
+    ProfileFooter.BackgroundTransparency = 1
+    ProfileFooter.ZIndex = 2
+    ProfileFooter.Parent = MainFrame
+
+    local ProfileDivider = Instance.new("Frame")
+    ProfileDivider.Name = "ProfileDivider"
+    ProfileDivider.Size = UDim2.new(1, -16, 0, 1)
+    ProfileDivider.Position = UDim2.new(0, 8, 0, 0)
+    ProfileDivider.BackgroundColor3 = Color3.fromRGB(65, 65, 75)
+    ProfileDivider.BackgroundTransparency = 0.25
+    ProfileDivider.BorderSizePixel = 0
+    ProfileDivider.ZIndex = 2
+    ProfileDivider.Parent = ProfileFooter
+
+    local ProfileAvatar = Instance.new("ImageLabel")
+    ProfileAvatar.Name = "ProfileAvatar"
+    ProfileAvatar.Size = UDim2.new(0, 30, 0, 30)
+    ProfileAvatar.Position = UDim2.new(0, 8, 0, 8)
+    ProfileAvatar.BackgroundColor3 = Color3.fromRGB(45, 55, 75)
+    ProfileAvatar.BackgroundTransparency = 0
+    ProfileAvatar.BorderSizePixel = 0
+    ProfileAvatar.ScaleType = Enum.ScaleType.Crop
+    ProfileAvatar.ZIndex = 2
+    ProfileAvatar.Parent = ProfileFooter
+
+    local ProfileAvatarCorner = Instance.new("UICorner")
+    ProfileAvatarCorner.CornerRadius = UDim.new(1, 0)
+    ProfileAvatarCorner.Parent = ProfileAvatar
+
+    local localPlayer = Players.LocalPlayer
+    local username = localPlayer and localPlayer.Name or "Player"
+
+    local ProfileUsername = Instance.new("TextLabel")
+    ProfileUsername.Name = "ProfileUsername"
+    ProfileUsername.Size = UDim2.new(0, 70, 0, 34)
+    ProfileUsername.Position = UDim2.new(0, 44, 0, 6)
+    ProfileUsername.BackgroundTransparency = 1
+    ProfileUsername.Text = string.sub(username, 1, 2) .. string.rep("•", 6)
+    ProfileUsername.TextColor3 = Color3.fromRGB(235, 235, 240)
+    ProfileUsername.TextSize = 11
+    ProfileUsername.Font = Enum.Font.GothamMedium
+    ProfileUsername.TextXAlignment = Enum.TextXAlignment.Left
+    ProfileUsername.TextYAlignment = Enum.TextYAlignment.Center
+    ProfileUsername.TextTruncate = Enum.TextTruncate.AtEnd
+    ProfileUsername.ZIndex = 2
+    ProfileUsername.Parent = ProfileFooter
+
+    if localPlayer then
+        task.spawn(function()
+            local success, thumbnail = pcall(function()
+                return Players:GetUserThumbnailAsync(
+                    localPlayer.UserId,
+                    Enum.ThumbnailType.HeadShot,
+                    Enum.ThumbnailSize.Size48x48
+                )
+            end)
+
+            if success and ProfileAvatar.Parent then
+                ProfileAvatar.Image = thumbnail
+            end
+        end)
+    end
     
     -- Content Container
     local ContentContainer = Instance.new("Frame")
@@ -448,6 +518,9 @@ function Acinonyx:CreateWindow(config)
         MainFrame = MainFrame,
         TabContainer = TabContainer,
         ContentContainer = ContentContainer,
+        ProfileFooter = ProfileFooter,
+        ProfileAvatar = ProfileAvatar,
+        ProfileUsername = ProfileUsername,
         Tabs = {},
         CurrentTab = nil
     }
