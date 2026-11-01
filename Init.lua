@@ -276,7 +276,7 @@ end
 -- Main Library Functions
 function Acinonyx:CreateWindow(config)
     config = config or {}
-    local windowName = config.Name or "Acinonyx"
+    local brandName = config.BrandName or config.Name or "Acinonyx UI"
     local guiParent = config.GuiParent or CoreGui
     if typeof(guiParent) ~= "Instance" then
         error("GuiParent must be a Roblox Instance", 2)
@@ -310,6 +310,12 @@ function Acinonyx:CreateWindow(config)
         math.min(600, availableHeight)
     )
     local windowSize = config.Size or UDim2.fromOffset(defaultWidth, defaultHeight)
+    local windowPixelWidth = windowSize.X.Offset + screenWidth * windowSize.X.Scale
+    local sidebarWidth = math.clamp(
+        tonumber(config.SidebarWidth) or math.floor(windowPixelWidth * 0.21),
+        150,
+        math.min(220, math.max(150, windowPixelWidth - 150))
+    )
     
     -- Clean up old instances
     for _, gui in pairs(guiParent:GetChildren()) do
@@ -335,70 +341,136 @@ function Acinonyx:CreateWindow(config)
     MainFrame.Size = windowSize
     MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-    MainFrame.BackgroundTransparency = 0.3
+    MainFrame.BackgroundColor3 = Color3.fromRGB(16, 20, 27)
+    MainFrame.BackgroundTransparency = 0.03
     MainFrame.BorderSizePixel = 0
+    MainFrame.ClipsDescendants = true
     MainFrame.Parent = ScreenGui
     
     local MainCorner = Instance.new("UICorner")
     MainCorner.CornerRadius = UDim.new(0, 10)
     MainCorner.Parent = MainFrame
+
+    local MainStroke = Instance.new("UIStroke")
+    MainStroke.Color = Color3.fromRGB(73, 82, 96)
+    MainStroke.Thickness = 1
+    MainStroke.Transparency = 0.18
+    MainStroke.Parent = MainFrame
+
+    local Sidebar = Instance.new("Frame")
+    Sidebar.Name = "Sidebar"
+    Sidebar.Size = UDim2.new(0, sidebarWidth, 1, 0)
+    Sidebar.BackgroundColor3 = Color3.fromRGB(21, 27, 36)
+    Sidebar.BackgroundTransparency = 0.02
+    Sidebar.BorderSizePixel = 0
+    Sidebar.Parent = MainFrame
+
+    local SidebarDivider = Instance.new("Frame")
+    SidebarDivider.Name = "SidebarDivider"
+    SidebarDivider.Size = UDim2.new(0, 1, 1, 0)
+    SidebarDivider.Position = UDim2.new(1, -1, 0, 0)
+    SidebarDivider.BackgroundColor3 = Color3.fromRGB(57, 66, 79)
+    SidebarDivider.BackgroundTransparency = 0.35
+    SidebarDivider.BorderSizePixel = 0
+    SidebarDivider.Parent = Sidebar
+
+    local BrandIcon = Instance.new("Frame")
+    BrandIcon.Name = "BrandIcon"
+    BrandIcon.Size = UDim2.new(0, 34, 0, 34)
+    BrandIcon.Position = UDim2.new(0, 22, 0, 17)
+    BrandIcon.Rotation = 15
+    BrandIcon.BackgroundColor3 = Color3.fromRGB(18, 165, 255)
+    BrandIcon.BorderSizePixel = 0
+    BrandIcon.Parent = Sidebar
+
+    local BrandIconGradient = Instance.new("UIGradient")
+    BrandIconGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(51, 211, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 98, 238))
+    })
+    BrandIconGradient.Rotation = 45
+    BrandIconGradient.Parent = BrandIcon
+
+    local BrandIconCorner = Instance.new("UICorner")
+    BrandIconCorner.CornerRadius = UDim.new(0, 3)
+    BrandIconCorner.Parent = BrandIcon
+
+    local BrandIconCutout = Instance.new("Frame")
+    BrandIconCutout.Name = "BrandIconCutout"
+    BrandIconCutout.Size = UDim2.new(0, 10, 0, 10)
+    BrandIconCutout.AnchorPoint = Vector2.new(0.5, 0.5)
+    BrandIconCutout.Position = UDim2.new(0.5, 0, 0.5, 0)
+    BrandIconCutout.Rotation = -15
+    BrandIconCutout.BackgroundColor3 = Sidebar.BackgroundColor3
+    BrandIconCutout.BorderSizePixel = 0
+    BrandIconCutout.Parent = BrandIcon
+
+    local BrandTitle = Instance.new("TextLabel")
+    BrandTitle.Name = "BrandTitle"
+    BrandTitle.Size = UDim2.new(1, -72, 0, 40)
+    BrandTitle.Position = UDim2.new(0, 66, 0, 14)
+    BrandTitle.BackgroundTransparency = 1
+    BrandTitle.Text = brandName
+    BrandTitle.TextColor3 = Color3.fromRGB(245, 247, 251)
+    BrandTitle.TextSize = 17
+    BrandTitle.Font = Enum.Font.GothamBold
+    BrandTitle.TextXAlignment = Enum.TextXAlignment.Left
+    BrandTitle.TextTruncate = Enum.TextTruncate.AtEnd
+    BrandTitle.Parent = Sidebar
     
     -- Top Bar
     local TopBar = Instance.new("Frame")
     TopBar.Name = "TopBar"
-    TopBar.Size = UDim2.new(1, 0, 0, 40)
-    TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    TopBar.BackgroundTransparency = 0.3
+    TopBar.Size = UDim2.new(1, -sidebarWidth, 0, 54)
+    TopBar.Position = UDim2.new(0, sidebarWidth, 0, 0)
+    TopBar.BackgroundColor3 = Color3.fromRGB(18, 23, 31)
+    TopBar.BackgroundTransparency = 0.02
     TopBar.BorderSizePixel = 0
     TopBar.Parent = MainFrame
-    
-    local TopCorner = Instance.new("UICorner")
-    TopCorner.CornerRadius = UDim.new(0, 10)
-    TopCorner.Parent = TopBar
-    
-    local TopBarFix = Instance.new("Frame")
-    TopBarFix.Size = UDim2.new(1, 0, 0, 10)
-    TopBarFix.Position = UDim2.new(0, 0, 1, -10)
-    TopBarFix.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    TopBarFix.BackgroundTransparency = 0.3
-    TopBarFix.BorderSizePixel = 0
-    TopBarFix.Parent = TopBar
-    
-    -- Title
-    local Title = Instance.new("TextLabel")
-    Title.Name = "Title"
-    Title.Size = UDim2.new(0, 200, 1, 0)
-    Title.Position = UDim2.new(0, 15, 0, 0)
-    Title.BackgroundTransparency = 1
-    Title.Text = windowName
-    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Title.TextSize = 16
-    Title.Font = Enum.Font.GothamBold
-    Title.TextXAlignment = Enum.TextXAlignment.Left
-    Title.Parent = TopBar
+
+    local TopBarDivider = Instance.new("Frame")
+    TopBarDivider.Name = "TopBarDivider"
+    TopBarDivider.Size = UDim2.new(1, 0, 0, 1)
+    TopBarDivider.Position = UDim2.new(0, 0, 1, -1)
+    TopBarDivider.BackgroundColor3 = Color3.fromRGB(54, 62, 74)
+    TopBarDivider.BackgroundTransparency = 0.45
+    TopBarDivider.BorderSizePixel = 0
+    TopBarDivider.Parent = TopBar
     
     -- Minimize Button
     local MinimizeButton = Instance.new("TextButton")
     MinimizeButton.Name = "MinimizeButton"
-    MinimizeButton.Size = UDim2.new(0, 35, 0, 35)
-    MinimizeButton.Position = UDim2.new(1, -75, 0, 0)
-    MinimizeButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    MinimizeButton.BackgroundTransparency = 0.3
+    MinimizeButton.Size = UDim2.new(0, 38, 0, 38)
+    MinimizeButton.Position = UDim2.new(1, -122, 0, 8)
+    MinimizeButton.BackgroundColor3 = Color3.fromRGB(18, 23, 31)
+    MinimizeButton.BackgroundTransparency = 1
     MinimizeButton.BorderSizePixel = 0
     MinimizeButton.Text = "−"
     MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     MinimizeButton.TextSize = 24
     MinimizeButton.Font = Enum.Font.GothamBold
     MinimizeButton.Parent = TopBar
+
+    local MaximizeButton = Instance.new("TextButton")
+    MaximizeButton.Name = "MaximizeButton"
+    MaximizeButton.Size = UDim2.new(0, 38, 0, 38)
+    MaximizeButton.Position = UDim2.new(1, -82, 0, 8)
+    MaximizeButton.BackgroundColor3 = Color3.fromRGB(18, 23, 31)
+    MaximizeButton.BackgroundTransparency = 1
+    MaximizeButton.BorderSizePixel = 0
+    MaximizeButton.Text = "□"
+    MaximizeButton.TextColor3 = Color3.fromRGB(204, 214, 229)
+    MaximizeButton.TextSize = 21
+    MaximizeButton.Font = Enum.Font.Gotham
+    MaximizeButton.Parent = TopBar
     
     -- Close Button
     local CloseButton = Instance.new("TextButton")
     CloseButton.Name = "CloseButton"
-    CloseButton.Size = UDim2.new(0, 35, 0, 35)
-    CloseButton.Position = UDim2.new(1, -40, 0, 0)
-    CloseButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    CloseButton.BackgroundTransparency = 0.3
+    CloseButton.Size = UDim2.new(0, 38, 0, 38)
+    CloseButton.Position = UDim2.new(1, -42, 0, 8)
+    CloseButton.BackgroundColor3 = Color3.fromRGB(18, 23, 31)
+    CloseButton.BackgroundTransparency = 1
     CloseButton.BorderSizePixel = 0
     CloseButton.Text = "×"
     CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -407,19 +479,27 @@ function Acinonyx:CreateWindow(config)
     CloseButton.Parent = TopBar
     
     Connect(connections, MinimizeButton.MouseEnter, function()
-        Tween(MinimizeButton, {BackgroundColor3 = Color3.fromRGB(60, 120, 220), BackgroundTransparency = 0})
+        Tween(MinimizeButton, {BackgroundColor3 = Color3.fromRGB(39, 49, 64), BackgroundTransparency = 0})
     end)
     
     Connect(connections, MinimizeButton.MouseLeave, function()
-        Tween(MinimizeButton, {BackgroundColor3 = Color3.fromRGB(30, 30, 35), BackgroundTransparency = 0.3})
+        Tween(MinimizeButton, {BackgroundColor3 = Color3.fromRGB(18, 23, 31), BackgroundTransparency = 1})
+    end)
+
+    Connect(connections, MaximizeButton.MouseEnter, function()
+        Tween(MaximizeButton, {BackgroundColor3 = Color3.fromRGB(39, 49, 64), BackgroundTransparency = 0})
+    end)
+
+    Connect(connections, MaximizeButton.MouseLeave, function()
+        Tween(MaximizeButton, {BackgroundColor3 = Color3.fromRGB(18, 23, 31), BackgroundTransparency = 1})
     end)
     
     Connect(connections, CloseButton.MouseEnter, function()
-        Tween(CloseButton, {BackgroundColor3 = Color3.fromRGB(220, 50, 50), BackgroundTransparency = 0})
+        Tween(CloseButton, {BackgroundColor3 = Color3.fromRGB(190, 52, 61), BackgroundTransparency = 0})
     end)
     
     Connect(connections, CloseButton.MouseLeave, function()
-        Tween(CloseButton, {BackgroundColor3 = Color3.fromRGB(30, 30, 35), BackgroundTransparency = 0.3})
+        Tween(CloseButton, {BackgroundColor3 = Color3.fromRGB(18, 23, 31), BackgroundTransparency = 1})
     end)
 
     local function DestroyWindow()
@@ -447,57 +527,74 @@ function Acinonyx:CreateWindow(config)
     end
     ActiveWindowCleanup = DestroyWindow
     Connect(connections, CloseButton.Activated, DestroyWindow)
+
+    local isMaximized = false
+    local restoreSize = MainFrame.Size
+    local restorePosition = MainFrame.Position
+    Connect(connections, MaximizeButton.Activated, function()
+        if isMaximized then
+            isMaximized = false
+            MaximizeButton.Text = "□"
+            Tween(MainFrame, {Size = restoreSize, Position = restorePosition}, 0.22)
+        else
+            isMaximized = true
+            restoreSize = MainFrame.Size
+            restorePosition = MainFrame.Position
+            MaximizeButton.Text = "❐"
+            local currentCamera = workspace.CurrentCamera
+            local currentViewport = currentCamera and currentCamera.ViewportSize or ViewportSize
+            Tween(MainFrame, {
+                Size = UDim2.fromOffset(math.max(1, currentViewport.X - 32), math.max(1, currentViewport.Y - 32)),
+                Position = UDim2.new(0.5, 0, 0.5, 0)
+            }, 0.22)
+        end
+    end)
     
     -- Tab Container
     local TabContainer = Instance.new("Frame")
     TabContainer.Name = "TabContainer"
-    TabContainer.Size = UDim2.new(0, 120, 1, -110)
-    TabContainer.Position = UDim2.new(0, 10, 0, 45)
-    TabContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    TabContainer.BackgroundTransparency = 0.3
+    TabContainer.Size = UDim2.new(1, -28, 1, -180)
+    TabContainer.Position = UDim2.new(0, 14, 0, 88)
+    TabContainer.BackgroundTransparency = 1
     TabContainer.BorderSizePixel = 0
-    TabContainer.Parent = MainFrame
-    
-    local TabCorner = Instance.new("UICorner")
-    TabCorner.CornerRadius = UDim.new(0, 8)
-    TabCorner.Parent = TabContainer
+    TabContainer.Parent = Sidebar
     
     local TabLayout = Instance.new("UIListLayout")
     TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    TabLayout.Padding = UDim.new(0, 5)
+    TabLayout.Padding = UDim.new(0, 6)
     TabLayout.Parent = TabContainer
     
     local TabPadding = Instance.new("UIPadding")
-    TabPadding.PaddingTop = UDim.new(0, 10)
+    TabPadding.PaddingTop = UDim.new(0, 16)
     TabPadding.PaddingBottom = UDim.new(0, 10)
-    TabPadding.PaddingLeft = UDim.new(0, 8)
-    TabPadding.PaddingRight = UDim.new(0, 8)
+    TabPadding.PaddingLeft = UDim.new(0, 0)
+    TabPadding.PaddingRight = UDim.new(0, 0)
     TabPadding.Parent = TabContainer
 
     -- Player profile footer
     local ProfileFooter = Instance.new("Frame")
     ProfileFooter.Name = "ProfileFooter"
-    ProfileFooter.Size = UDim2.new(0, 120, 0, 45)
-    ProfileFooter.Position = UDim2.new(0, 10, 1, -10)
+    ProfileFooter.Size = UDim2.new(1, -32, 0, 76)
+    ProfileFooter.Position = UDim2.new(0, 16, 1, -10)
     ProfileFooter.AnchorPoint = Vector2.new(0, 1)
     ProfileFooter.BackgroundTransparency = 1
     ProfileFooter.ZIndex = 2
-    ProfileFooter.Parent = MainFrame
+    ProfileFooter.Parent = Sidebar
 
     local ProfileDivider = Instance.new("Frame")
     ProfileDivider.Name = "ProfileDivider"
-    ProfileDivider.Size = UDim2.new(1, -16, 0, 1)
-    ProfileDivider.Position = UDim2.new(0, 8, 0, 0)
-    ProfileDivider.BackgroundColor3 = Color3.fromRGB(65, 65, 75)
-    ProfileDivider.BackgroundTransparency = 0.25
+    ProfileDivider.Size = UDim2.new(1, 0, 0, 1)
+    ProfileDivider.Position = UDim2.new(0, 0, 0, 0)
+    ProfileDivider.BackgroundColor3 = Color3.fromRGB(66, 76, 91)
+    ProfileDivider.BackgroundTransparency = 0.35
     ProfileDivider.BorderSizePixel = 0
     ProfileDivider.ZIndex = 2
     ProfileDivider.Parent = ProfileFooter
 
     local ProfileAvatar = Instance.new("ImageLabel")
     ProfileAvatar.Name = "ProfileAvatar"
-    ProfileAvatar.Size = UDim2.new(0, 30, 0, 30)
-    ProfileAvatar.Position = UDim2.new(0, 8, 0, 8)
+    ProfileAvatar.Size = UDim2.new(0, 44, 0, 44)
+    ProfileAvatar.Position = UDim2.new(0, 0, 0, 17)
     ProfileAvatar.BackgroundColor3 = Color3.fromRGB(45, 55, 75)
     ProfileAvatar.BackgroundTransparency = 0
     ProfileAvatar.BorderSizePixel = 0
@@ -514,12 +611,12 @@ function Acinonyx:CreateWindow(config)
 
     local ProfileUsername = Instance.new("TextLabel")
     ProfileUsername.Name = "ProfileUsername"
-    ProfileUsername.Size = UDim2.new(0, 70, 0, 34)
-    ProfileUsername.Position = UDim2.new(0, 44, 0, 6)
+    ProfileUsername.Size = UDim2.new(1, -54, 0, 48)
+    ProfileUsername.Position = UDim2.new(0, 54, 0, 15)
     ProfileUsername.BackgroundTransparency = 1
     ProfileUsername.Text = string.sub(username, 1, 2) .. string.rep("•", 6)
     ProfileUsername.TextColor3 = Color3.fromRGB(235, 235, 240)
-    ProfileUsername.TextSize = 11
+    ProfileUsername.TextSize = 16
     ProfileUsername.Font = Enum.Font.GothamMedium
     ProfileUsername.TextXAlignment = Enum.TextXAlignment.Left
     ProfileUsername.TextYAlignment = Enum.TextYAlignment.Center
@@ -546,10 +643,23 @@ function Acinonyx:CreateWindow(config)
     -- Content Container
     local ContentContainer = Instance.new("Frame")
     ContentContainer.Name = "ContentContainer"
-    ContentContainer.Size = UDim2.new(1, -145, 1, -50)
-    ContentContainer.Position = UDim2.new(0, 135, 0, 45)
-    ContentContainer.BackgroundTransparency = 1
+    ContentContainer.Size = UDim2.new(1, -sidebarWidth - 58, 1, -86)
+    ContentContainer.Position = UDim2.new(0, sidebarWidth + 28, 0, 78)
+    ContentContainer.BackgroundColor3 = Color3.fromRGB(20, 25, 33)
+    ContentContainer.BackgroundTransparency = 0.04
+    ContentContainer.BorderSizePixel = 0
+    ContentContainer.ClipsDescendants = true
     ContentContainer.Parent = MainFrame
+
+    local ContentCorner = Instance.new("UICorner")
+    ContentCorner.CornerRadius = UDim.new(0, 16)
+    ContentCorner.Parent = ContentContainer
+
+    local ContentStroke = Instance.new("UIStroke")
+    ContentStroke.Color = Color3.fromRGB(53, 62, 75)
+    ContentStroke.Thickness = 1
+    ContentStroke.Transparency = 0.58
+    ContentStroke.Parent = ContentContainer
     
     -- Minimize Overlay
     local MinimizeOverlay = Instance.new("ImageButton")
@@ -643,7 +753,7 @@ function Acinonyx:CreateWindow(config)
         return CreateNotification(title, text, duration, notifType, windowNotifications, guiParent)
     end
     
-    function Window:CreateTab(tabName)
+    function Window:CreateTab(tabName, tabConfig)
         if type(tabName) ~= "string" or tabName == "" then
             error("Tab name must be a non-empty string", 2)
         end
@@ -651,29 +761,91 @@ function Acinonyx:CreateWindow(config)
             error("A tab named '" .. tabName .. "' already exists", 2)
         end
 
+        local icon = type(tabConfig) == "table" and tabConfig.Icon or nil
+        if type(tabConfig) == "string" then
+            icon = tabConfig
+        end
+        if icon == nil then
+            local normalizedName = string.lower(tabName)
+            if normalizedName == "home" or normalizedName == "beranda" or normalizedName == "main" then
+                icon = "⌂"
+            elseif normalizedName == "friends" or normalizedName == "friend" or normalizedName == "teman" then
+                icon = "♟"
+            elseif normalizedName == "settings" or normalizedName == "setting" or normalizedName == "pengaturan" then
+                icon = "⚙"
+            else
+                icon = "◆"
+            end
+        end
+
         local Tab = {}
         
         -- Tab Button
         local TabButton = Instance.new("TextButton")
         TabButton.Name = tabName
-        TabButton.Size = UDim2.new(1, 0, 0, 35)
-        TabButton.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-        TabButton.BackgroundTransparency = 0.3
+        TabButton.Size = UDim2.new(1, 0, 0, 48)
+        TabButton.BackgroundColor3 = Color3.fromRGB(18, 52, 92)
+        TabButton.BackgroundTransparency = 1
         TabButton.BorderSizePixel = 0
-        TabButton.Text = tabName
-        TabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-        TabButton.TextSize = 14
+        TabButton.Text = ""
+        TabButton.TextColor3 = Color3.fromRGB(239, 245, 255)
+        TabButton.TextSize = 15
         TabButton.Font = Enum.Font.Gotham
         TabButton.Parent = TabContainer
         
         local TabButtonCorner = Instance.new("UICorner")
-        TabButtonCorner.CornerRadius = UDim.new(0, 6)
+        TabButtonCorner.CornerRadius = UDim.new(0, 12)
         TabButtonCorner.Parent = TabButton
+
+        local TabIndicator = Instance.new("Frame")
+        TabIndicator.Name = "ActiveIndicator"
+        TabIndicator.Size = UDim2.new(0, 4, 1, -12)
+        TabIndicator.Position = UDim2.new(0, 0, 0, 6)
+        TabIndicator.BackgroundColor3 = Color3.fromRGB(24, 177, 255)
+        TabIndicator.BorderSizePixel = 0
+        TabIndicator.Visible = false
+        TabIndicator.Parent = TabButton
+
+        local TabIndicatorCorner = Instance.new("UICorner")
+        TabIndicatorCorner.CornerRadius = UDim.new(1, 0)
+        TabIndicatorCorner.Parent = TabIndicator
+
+        local isImageIcon = type(icon) == "string" and string.sub(icon, 1, 13) == "rbxassetid://"
+        local TabIcon = Instance.new(isImageIcon and "ImageLabel" or "TextLabel")
+        TabIcon.Name = "TabIcon"
+        TabIcon.Size = UDim2.new(0, 34, 0, 36)
+        TabIcon.Position = UDim2.new(0, 18, 0.5, -18)
+        TabIcon.BackgroundTransparency = 1
+        if isImageIcon then
+            TabIcon.Image = icon
+            TabIcon.ImageColor3 = Color3.fromRGB(155, 167, 184)
+            TabIcon.ScaleType = Enum.ScaleType.Fit
+        else
+            TabIcon.Text = tostring(icon)
+            TabIcon.TextColor3 = Color3.fromRGB(155, 167, 184)
+            TabIcon.TextSize = 27
+            TabIcon.Font = Enum.Font.GothamBold
+        end
+        TabIcon.Parent = TabButton
+
+        local TabLabel = Instance.new("TextLabel")
+        TabLabel.Name = "TabLabel"
+        TabLabel.Size = UDim2.new(1, -66, 1, 0)
+        TabLabel.Position = UDim2.new(0, 60, 0, 0)
+        TabLabel.BackgroundTransparency = 1
+        TabLabel.Text = tabName
+        TabLabel.TextColor3 = Color3.fromRGB(181, 192, 208)
+        TabLabel.TextSize = 15
+        TabLabel.Font = Enum.Font.GothamMedium
+        TabLabel.TextXAlignment = Enum.TextXAlignment.Left
+        TabLabel.TextTruncate = Enum.TextTruncate.AtEnd
+        TabLabel.Parent = TabButton
         
         -- Tab Content
         local TabContent = Instance.new("ScrollingFrame")
         TabContent.Name = tabName .. "Content"
-        TabContent.Size = UDim2.new(1, 0, 1, 0)
+        TabContent.Size = UDim2.new(1, -20, 1, -20)
+        TabContent.Position = UDim2.new(0, 10, 0, 10)
         TabContent.BackgroundTransparency = 1
         TabContent.BorderSizePixel = 0
         TabContent.ScrollBarThickness = 4
@@ -688,10 +860,10 @@ function Acinonyx:CreateWindow(config)
         ContentLayout.Parent = TabContent
         
         local ContentPadding = Instance.new("UIPadding")
-        ContentPadding.PaddingTop = UDim.new(0, 5)
-        ContentPadding.PaddingBottom = UDim.new(0, 5)
-        ContentPadding.PaddingLeft = UDim.new(0, 5)
-        ContentPadding.PaddingRight = UDim.new(0, 10)
+        ContentPadding.PaddingTop = UDim.new(0, 10)
+        ContentPadding.PaddingBottom = UDim.new(0, 10)
+        ContentPadding.PaddingLeft = UDim.new(0, 10)
+        ContentPadding.PaddingRight = UDim.new(0, 12)
         ContentPadding.Parent = TabContent
         
         -- Auto-resize canvas
@@ -699,24 +871,39 @@ function Acinonyx:CreateWindow(config)
             TabContent.CanvasSize = UDim2.new(0, 0, 0, ContentLayout.AbsoluteContentSize.Y + 10)
         end)
         
+        Tab.Button = TabButton
+        Tab.Content = TabContent
+        Tab.Indicator = TabIndicator
+        Tab.Icon = TabIcon
+        Tab.Label = TabLabel
+        Tab.Elements = {}
+
         Connect(connections, TabButton.Activated, function()
             for _, tab in pairs(Window.Tabs) do
-                tab.Button.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-                tab.Button.BackgroundTransparency = 0.3
-                tab.Button.TextColor3 = Color3.fromRGB(200, 200, 200)
+                tab.Button.BackgroundColor3 = Color3.fromRGB(18, 52, 92)
+                tab.Button.BackgroundTransparency = 1
+                tab.Indicator.Visible = false
+                if tab.Icon:IsA("ImageLabel") then
+                    tab.Icon.ImageColor3 = Color3.fromRGB(155, 167, 184)
+                else
+                    tab.Icon.TextColor3 = Color3.fromRGB(155, 167, 184)
+                end
+                tab.Label.TextColor3 = Color3.fromRGB(181, 192, 208)
                 tab.Content.Visible = false
             end
             
-            TabButton.BackgroundColor3 = Color3.fromRGB(60, 120, 220)
-            TabButton.BackgroundTransparency = 0.2
-            TabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            TabButton.BackgroundColor3 = Color3.fromRGB(18, 52, 92)
+            TabButton.BackgroundTransparency = 0.12
+            TabIndicator.Visible = true
+            if TabIcon:IsA("ImageLabel") then
+                TabIcon.ImageColor3 = Color3.fromRGB(35, 195, 255)
+            else
+                TabIcon.TextColor3 = Color3.fromRGB(35, 195, 255)
+            end
+            TabLabel.TextColor3 = Color3.fromRGB(245, 248, 255)
             TabContent.Visible = true
             Window.CurrentTab = Tab
         end)
-        
-        Tab.Button = TabButton
-        Tab.Content = TabContent
-        Tab.Elements = {}
         
         -- Tab Functions
         function Tab:CreateButton(config)
@@ -1318,9 +1505,15 @@ function Acinonyx:CreateWindow(config)
         
         -- Auto-select first tab
         if Window.CurrentTab == nil then
-            TabButton.BackgroundColor3 = Color3.fromRGB(60, 120, 220)
-            TabButton.BackgroundTransparency = 0.2
-            TabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            TabButton.BackgroundColor3 = Color3.fromRGB(18, 52, 92)
+            TabButton.BackgroundTransparency = 0.12
+            TabIndicator.Visible = true
+            if TabIcon:IsA("ImageLabel") then
+                TabIcon.ImageColor3 = Color3.fromRGB(35, 195, 255)
+            else
+                TabIcon.TextColor3 = Color3.fromRGB(35, 195, 255)
+            end
+            TabLabel.TextColor3 = Color3.fromRGB(245, 248, 255)
             TabContent.Visible = true
             Window.CurrentTab = Tab
         end

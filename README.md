@@ -4,7 +4,8 @@ Acinonyx UI is a single-file Luau UI library. It defaults to `CoreGui` for the e
 
 ## Features
 
-- Draggable window with minimize, restore, and close controls.
+- Dark desktop-style window with a full-height sidebar, brand mark, inset content panel, and minimize, maximize, restore, and close controls.
+- Sidebar tabs use a blue active state and support a text glyph or Roblox image asset as an icon.
 - Tabs, labels, buttons, toggles, sliders, textboxes, dropdowns, and multi-select dropdowns.
 - Notifications with info, success, warning, and error styles.
 - Sidebar profile footer with the local player's circular headshot and a masked username. The footer shows the first two username characters followed by six bullets.
@@ -14,7 +15,9 @@ Acinonyx UI is a single-file Luau UI library. It defaults to `CoreGui` for the e
 
 ## Quick start
 
-See [`Example`](./Example) for a small demo of the public API. Its callbacks print demo values and do not change the game state. For a repeatable review, pin the loader to a commit or use a local copy of `Init.lua` rather than tracking a moving branch URL.
+See [`Example`](./Example) for a small demo of the public API and the Beranda, Teman, Pengaturan sidebar layout. Its callbacks print demo values and do not change the game state. For a repeatable review, pin the loader to a commit or use a local copy of `Init.lua` rather than tracking a moving branch URL.
+
+`CreateWindow` accepts `Name` (sidebar brand text), `BrandName` (optional override), `SidebarWidth` (optional pixel width), `Size`, and `GuiParent`. Tab icons can be selected with `CreateTab("Beranda")` name defaults or passed as the second argument, for example `CreateTab("Custom", {Icon = "★"})`. Use an `rbxassetid://...` value for an image icon.
 
 ### Roblox Studio client test
 

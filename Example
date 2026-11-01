@@ -6,10 +6,10 @@ local Acinonyx = loadstring(game:HttpGet(
 ))()
 
 local Window = Acinonyx:CreateWindow({
-	Name = "Acinonyx UI Demo",
+	Name = "Acinonyx UI",
 })
 
-local MainTab = Window:CreateTab("Main")
+local MainTab = Window:CreateTab("Beranda")
 MainTab:CreateLabel("Player profile appears automatically in the sidebar footer.")
 
 MainTab:CreateButton({
@@ -68,9 +68,12 @@ MainTab:CreateMultiDropdown({
 	end,
 })
 
-local HelpTab = Window:CreateTab("Help")
-HelpTab:CreateLabel("Use Window:Destroy() to clean up the UI and its input connections.")
-HelpTab:CreateButton({
+local FriendsTab = Window:CreateTab("Teman")
+FriendsTab:CreateLabel("Your player and friends panel can be added here.")
+
+local SettingsTab = Window:CreateTab("Pengaturan")
+SettingsTab:CreateLabel("Use Window:Destroy() to clean up the UI and its input connections.")
+SettingsTab:CreateButton({
 	Text = "Close demo window",
 	Callback = function()
 		Window:Destroy()
